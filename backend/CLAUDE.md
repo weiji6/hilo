@@ -17,3 +17,8 @@ Python 3.12+, LangGraph/LangChain, FastAPI, Qdrant and SQLite form the backend.
 
 Hilo derives from DeerFlow. Preserve license notices and attribution. Do not export
 local config, credentials, uploaded documents, private infrastructure or Git history.
+
+Publication support: export the reviewed ingestion/maintenance/OCR helpers and
+optional Kubernetes provisioner. Run test_publication_integrity.py when changing
+source allowlists or default tool settings. LocalSandbox must work without zsh.
+See docs/functionality-audit.md for migration and external-service test limits.

@@ -62,3 +62,31 @@ paths and persisted legacy data paths are retained for compatibility.
 published, on localhost. Qdrant, auth database, runtime data, and LangGraph
 checkpoints use named volumes. Public production API authorization is not provided
 by this template; review SECURITY.md before exposing services.
+
+## Source publication and supporting tools
+
+The public repository starts from a reviewed source snapshot, with a new Git root;
+this is not a transfer of the original private repository's commit graph. Upstream
+license and attribution remain in LICENSE and NOTICE. Subsequent Hilo commits use
+normal Git history. README.md is Chinese; README.en.md contains English documentation.
+
+Default tools include knowledge retrieval, file/Skills reading, shell, web fetch,
+and image search. LocalSandbox selects zsh when available, then bash, then /bin/sh,
+so slim Linux images work without installing zsh. This executes in the backend
+host/container; it is not an isolation boundary. Research subagents still receive
+only scoped retrieval, checkpoint, and result-submission tools. Optional AIO and
+Kubernetes sandbox providers require their own deployment and shared paths.
+
+`scripts/ingest_structured_docs_to_db.py` restores the structured corpus → SQLite
+paragraph/FTS workflow. `--docs-dir` determines the default adjacent paragraphs.db;
+a missing database is rebuilt even if source files retain old .resolved markers.
+`prewarm_knowledge_indexes.py`, `reindex_global_knowledge.py`, paragraph-ID
+normalization, and `backend/scripts/local_ocr.py` provide optional maintenance/OCR
+entrypoints. OCR requires an external MinerU gRPC service. Vector indexing remains
+a separate operation from SQLite ingestion. HILO_CONFIG_PATH takes precedence over
+the legacy alias in the restored ingestion and OCR helpers.
+
+The exporter explicitly includes supported scripts and the generic provisioner,
+while excluding private deployment/synchronization scripts. A regression exports
+the real tree and checks runtime-source parity and supported entrypoints. See
+[functionality audit](functionality-audit.md) for evidence and remaining limits.

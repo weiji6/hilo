@@ -8,10 +8,12 @@ export async function POST(
   { params }: { params: Promise<{ thread_id: string }> },
 ) {
   const threadId = (await params).thread_id;
-  const jsonString = fs.readFileSync(
-    path.resolve(process.cwd(), `public/demo/threads/${threadId}/thread.json`),
-    "utf8",
-  );
+  const demoRoot = path.resolve(process.cwd(), "public/demo/threads");
+  const demoPath = path.resolve(demoRoot, threadId, "thread.json");
+  if (!demoPath.startsWith(demoRoot + path.sep) || !fs.existsSync(demoPath)) {
+    return Response.json({ error: "Demo thread not found" }, { status: 404 });
+  }
+  const jsonString = fs.readFileSync(demoPath, "utf8");
   const json = JSON.parse(jsonString);
   if (Array.isArray(json.history)) {
     return Response.json(json);

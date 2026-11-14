@@ -2,12 +2,11 @@ import fs from "fs";
 import path from "path";
 
 export function POST() {
-  const threadsDir = fs.readdirSync(
-    path.resolve(process.cwd(), "public/demo/threads"),
-    {
-      withFileTypes: true,
-    },
-  );
+  const demoDir = path.resolve(process.cwd(), "public/demo/threads");
+  if (!fs.existsSync(demoDir)) {
+    return Response.json([]);
+  }
+  const threadsDir = fs.readdirSync(demoDir, { withFileTypes: true });
   const threadData = threadsDir
     .map((threadId) => {
       if (threadId.isDirectory() && !threadId.name.startsWith(".")) {

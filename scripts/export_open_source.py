@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROOT_FILES = {
     "README.md",
     "README.zh-CN.md",
+    "README.en.md",
     "CONTRIBUTING.md",
     "LICENSE",
     "NOTICE",
@@ -26,10 +27,30 @@ ROOT_FILES = {
     "extensions_config.example.json",
     "CHANGELOG.md",
 }
-DOC_FILES = {"docs/architecture.md", "docs/domain-profiles.md", "docs/roadmap.md"}
-DOCKER_FILES = {"docker/compose.hilo.yaml", "docker/nginx/hilo.conf"}
+DOC_FILES = {
+    "docs/architecture.md",
+    "docs/domain-profiles.md",
+    "docs/roadmap.md",
+    "docs/functionality-audit.md",
+}
+DOCKER_FILES = {
+    "docker/compose.hilo.yaml",
+    "docker/nginx/hilo.conf",
+    "docker/provisioner/app.py",
+    "docker/provisioner/Dockerfile",
+    "docker/provisioner/README.md",
+}
 WORKFLOW_FILES = {".github/workflows/ci.yml", ".github/pull_request_template.md"}
-SCRIPT_FILES = {"scripts/init_config.py", "scripts/export_open_source.py"}
+SCRIPT_FILES = {
+    "scripts/init_config.py",
+    "scripts/export_open_source.py",
+    "scripts/docker.sh",
+    "scripts/ingest_structured_docs_to_db.py",
+    "scripts/normalize_structured_paragraph_ids.py",
+    "scripts/prewarm_knowledge_indexes.py",
+    "scripts/reindex_global_knowledge.py",
+    "backend/scripts/local_ocr.py",
+}
 EXCLUDE_PARTS = {
     ".git",
     "node_modules",

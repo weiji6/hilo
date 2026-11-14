@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -138,7 +139,7 @@ class LocalSandbox(Sandbox):
 
         result = subprocess.run(
             resolved_command,
-            executable="/bin/zsh",
+            executable=shutil.which("zsh") or shutil.which("bash") or "/bin/sh",
             shell=True,
             capture_output=True,
             text=True,

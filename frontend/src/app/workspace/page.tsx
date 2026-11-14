@@ -7,8 +7,12 @@ import { env } from "@/env";
 
 export default function WorkspacePage() {
   if (env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true") {
+    const demoDir = path.resolve(process.cwd(), "public/demo/threads");
+    if (!fs.existsSync(demoDir)) {
+      return redirect("/workspace/chats/new");
+    }
     const firstThread = fs
-      .readdirSync(path.resolve(process.cwd(), "public/demo/threads"), {
+      .readdirSync(demoDir, {
         withFileTypes: true,
       })
       .find((thread) => thread.isDirectory() && !thread.name.startsWith("."));

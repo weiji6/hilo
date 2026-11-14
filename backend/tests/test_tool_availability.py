@@ -12,7 +12,7 @@ def test_repo_config_disables_file_write_tools(monkeypatch) -> None:
         classmethod(lambda cls, config_path=None: ExtensionsConfig()),
     )
 
-    config_path = Path(__file__).resolve().parents[2] / "config.yaml"
+    config_path = Path(__file__).resolve().parents[2] / "config.example.yaml"
     config = AppConfig.from_file(str(config_path))
 
     tool_names = [tool.name for tool in config.tools]
@@ -22,30 +22,22 @@ def test_repo_config_disables_file_write_tools(monkeypatch) -> None:
 
 
 def test_runtime_tool_registry_excludes_present_files(monkeypatch) -> None:
-    tools_module = (
-        Path(__file__).resolve().parents[1] / "src" / "tools" / "tools.py"
-    ).read_text(encoding="utf-8")
+    tools_module = (Path(__file__).resolve().parents[1] / "src" / "tools" / "tools.py").read_text(encoding="utf-8")
 
     assert "present_file_tool" not in tools_module
     assert "present_files" not in tools_module
 
 
 def test_runtime_tool_registry_exposes_knowledge_search() -> None:
-    tools_module = (
-        Path(__file__).resolve().parents[1] / "src" / "tools" / "tools.py"
-    ).read_text(encoding="utf-8")
+    tools_module = (Path(__file__).resolve().parents[1] / "src" / "tools" / "tools.py").read_text(encoding="utf-8")
 
     assert "TEMPORARILY_DISABLED_TOOL_NAMES = set()" in tools_module
     assert "tool.name not in TEMPORARILY_DISABLED_TOOL_NAMES" in tools_module
 
 
 def test_subtask_result_format_fully_replaces_summary_with_task_result() -> None:
-    general_purpose = (
-        Path(__file__).resolve().parents[1] / "src" / "subagents" / "builtins" / "general_purpose.py"
-    ).read_text(encoding="utf-8")
-    executor_source = (
-        Path(__file__).resolve().parents[1] / "src" / "subagents" / "executor.py"
-    ).read_text(encoding="utf-8")
+    general_purpose = (Path(__file__).resolve().parents[1] / "src" / "subagents" / "builtins" / "general_purpose.py").read_text(encoding="utf-8")
+    executor_source = (Path(__file__).resolve().parents[1] / "src" / "subagents" / "executor.py").read_text(encoding="utf-8")
 
     assert "## 任务结果" in general_purpose
     assert "## 摘要" not in general_purpose
@@ -57,6 +49,7 @@ def test_subagents_enable_checkpoint_middleware(monkeypatch) -> None:
     import importlib.util
     import sys
     from types import SimpleNamespace
+
     from src.agents.middlewares.knowledge_checkpoint_middleware import KnowledgeCheckpointMiddleware
     from src.agents.middlewares.subagent_tool_limit_middleware import SubagentToolLimitMiddleware
     from src.agents.retrieval_policy import OVERVIEW_SUBAGENT_PROMPT
@@ -94,9 +87,8 @@ def test_general_purpose_subagent_tool_allowlist() -> None:
     from src.subagents.builtins.general_purpose import GENERAL_PURPOSE_CONFIG
 
     allowed = set(GENERAL_PURPOSE_CONFIG.tools or [])
-    assert allowed == {"book_search", "knowledge_search", "knowledge_locate", "knowledge_checkpoint"}, (
-        "general-purpose subagent must only have knowledge retrieval tools; "
-        "sandbox/bash/file tools must be handled by the lead agent before delegating"
+    assert allowed == {"knowledge_locate", "knowledge_checkpoint", "submit_task_result"}, (
+        "general-purpose subagent must retain scoped retrieval and result submission; sandbox/bash/file tools must be handled by the lead agent before delegating"
     )
     assert "bash" not in allowed
     assert "read_file" not in allowed
@@ -107,7 +99,4 @@ def test_general_purpose_subagent_no_sandbox_working_directory() -> None:
     from src.subagents.builtins.general_purpose import GENERAL_PURPOSE_CONFIG
 
     prompt = GENERAL_PURPOSE_CONFIG.system_prompt
-    assert "/mnt/user-data/uploads" not in prompt, (
-        "subtask prompt must not reference sandbox upload paths; "
-        "uploaded document content should be passed via task description from lead agent"
-    )
+    assert "/mnt/user-data/uploads" not in prompt, "subtask prompt must not reference sandbox upload paths; uploaded document content should be passed via task description from lead agent"

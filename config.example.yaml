@@ -18,10 +18,14 @@ domain:
 sandbox:
   use: src.sandbox.local:LocalSandboxProvider
 
-# Only retrieval tools are enabled by default. Add sandbox tools or MCP servers
-# explicitly when your workflow needs code execution or external resources.
+# Standard agent tools: knowledge retrieval, Skills/file reading, shell, and web.
+# LocalSandbox executes on the backend host/container. Use an isolated provider
+# for untrusted workloads; see docs/architecture.md.
 tool_groups:
   - name: knowledge
+  - name: file:read
+  - name: bash
+  - name: web
 tools:
   - name: book_search
     group: knowledge
@@ -32,6 +36,24 @@ tools:
   - name: knowledge_search
     group: knowledge
     use: src.community.knowledge_base.tools:knowledge_search_tool
+
+  - name: ls
+    group: file:read
+    use: src.sandbox.tools:ls_tool
+  - name: read_file
+    group: file:read
+    use: src.sandbox.tools:read_file_tool
+  - name: bash
+    group: bash
+    use: src.sandbox.tools:bash_tool
+  - name: web_fetch
+    group: web
+    use: src.community.jina_ai.tools:web_fetch_tool
+    timeout: 10
+  - name: image_search
+    group: web
+    use: src.community.image_search.tools:image_search_tool
+    max_results: 5
 
 knowledge_base:
   enabled: true

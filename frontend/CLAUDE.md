@@ -90,3 +90,6 @@ NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:2024
 Requires Node.js 22+ and pnpm 10.26.2+.
 
 Hilo uses neutral product text. Keep domain examples out of core UI copy. Source release excludes prior demo recordings.
+
+Static demo recordings are excluded from source releases. Missing demo directories
+return an empty list / 404 and workspace routing falls back to a new chat.
