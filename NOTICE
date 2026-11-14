@@ -1,0 +1,11 @@
+Hilo
+Copyright (c) 2026 Hilo contributors
+
+Hilo is derived from DeerFlow: https://github.com/bytedance/deer-flow
+Copyright (c) 2025 Bytedance Ltd. and/or its affiliates.
+The original copyright and MIT license notices are retained in LICENSE.
+
+Hilo extends the inherited agent runtime with domain-configurable knowledge
+retrieval, source evidence and citation workflows, and reusable domain examples.
+LangGraph, LangChain, Next.js, and other dependencies retain their own licenses.
+Bundled third-party skills retain the license files included in their directories.

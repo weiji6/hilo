@@ -1,0 +1,138 @@
+import logging
+
+from langchain.tools import BaseTool
+
+from src.config import get_app_config
+from src.reflection import resolve_variable
+from src.tools.builtins import (
+    ask_clarification_tool,
+    knowledge_checkpoint_tool,
+    task_tool,
+    view_image_tool,
+)
+
+logger = logging.getLogger(__name__)
+
+BUILTIN_TOOLS = [
+    ask_clarification_tool,
+    knowledge_checkpoint_tool,
+]
+
+# Temporary kill switch for tools that should remain implemented in the codebase
+# but must not be exposed to the model right now.
+TEMPORARILY_DISABLED_TOOL_NAMES = set()
+
+# The lead agent runs one `book_search` pre-routing pass so it can assign
+# concrete doc_ids to subtasks; deep page reading (`knowledge_locate`) stays
+# inside subtasks.
+LEAD_ORCHESTRATOR_TOOL_NAMES: set[str] = {"book_search"}
+
+SUBAGENT_TOOLS = [
+    task_tool,
+    # task_status_tool is no longer exposed to LLM (backend handles polling internally)
+]
+
+
+def get_available_tools(
+    groups: list[str] | None = None,
+    include_mcp: bool = True,
+    model_name: str | None = None,
+    subagent_enabled: bool = False,
+    include_task_tool: bool | None = None,
+    allowed_tool_names: set[str] | None = None,
+    disabled_tool_names: set[str] | None = None,
+) -> list[BaseTool]:
+    """Get all available tools from config.
+
+    Note: MCP tools should be initialized at application startup using
+    `initialize_mcp_tools()` from src.mcp module.
+
+    Args:
+        groups: Optional list of tool groups to filter by.
+        include_mcp: Whether to include tools from MCP servers (default: True).
+        model_name: Optional model name to determine if vision tools should be included.
+        subagent_enabled: Whether subagent execution is enabled for this run.
+        include_task_tool: Whether to expose the raw `task` tool to the lead agent.
+            Defaults to the value of `subagent_enabled`.
+        allowed_tool_names: Optional allowlist of tool names to expose.
+        disabled_tool_names: Optional per-call denylist of tool names to hide.
+
+    Returns:
+        List of available tools.
+    """
+    config = get_app_config()
+    disabled_tool_names = disabled_tool_names or set()
+    loaded_tools = [
+        resolve_variable(tool.use, BaseTool)
+        for tool in config.tools
+        if (
+            (groups is None or tool.group in groups)
+            and tool.name not in TEMPORARILY_DISABLED_TOOL_NAMES
+            and tool.name not in disabled_tool_names
+        )
+    ]
+    if allowed_tool_names is not None:
+        loaded_tools = [tool for tool in loaded_tools if tool.name in allowed_tool_names]
+
+    # Get cached MCP tools if enabled
+    # NOTE: We use ExtensionsConfig.from_file() instead of config.extensions
+    # to always read the latest configuration from disk. This ensures that changes
+    # made through the Gateway API (which runs in a separate process) are immediately
+    # reflected when loading MCP tools.
+    mcp_tools = []
+    if include_mcp:
+        try:
+            from src.config.extensions_config import ExtensionsConfig
+            from src.mcp.cache import get_cached_mcp_tools
+
+            extensions_config = ExtensionsConfig.from_file()
+            if extensions_config.get_enabled_mcp_servers():
+                mcp_tools = get_cached_mcp_tools()
+                mcp_tools = [
+                    tool
+                    for tool in mcp_tools
+                    if tool.name not in TEMPORARILY_DISABLED_TOOL_NAMES
+                    and tool.name not in disabled_tool_names
+                ]
+                if allowed_tool_names is not None:
+                    mcp_tools = [tool for tool in mcp_tools if tool.name in allowed_tool_names]
+                if mcp_tools:
+                    logger.info(f"Using {len(mcp_tools)} cached MCP tool(s)")
+        except ImportError:
+            logger.warning("MCP module not available. Install 'langchain-mcp-adapters' package to enable MCP tools.")
+        except Exception as e:
+            logger.error(f"Failed to get cached MCP tools: {e}")
+
+    # Conditionally add tools based on config
+    builtin_tools = BUILTIN_TOOLS.copy()
+
+    if include_task_tool is None:
+        include_task_tool = subagent_enabled
+
+    # Add raw task tool only when explicitly exposed to the lead agent.
+    if include_task_tool:
+        builtin_tools.extend(SUBAGENT_TOOLS)
+        logger.info("Including subagent tools (task)")
+
+    # If no model_name specified, use the first model (default)
+    if model_name is None and config.models:
+        model_name = config.models[0].name
+
+    # Add view_image_tool only if the model supports vision
+    model_config = config.get_model_config(model_name) if model_name else None
+    if model_config is not None and model_config.supports_vision:
+        builtin_tools.append(view_image_tool)
+        logger.info(f"Including view_image_tool for model '{model_name}' (supports_vision=True)")
+
+    if allowed_tool_names is not None:
+        builtin_tools = [tool for tool in builtin_tools if tool.name in allowed_tool_names]
+    if disabled_tool_names:
+        builtin_tools = [tool for tool in builtin_tools if tool.name not in disabled_tool_names]
+
+    if TEMPORARILY_DISABLED_TOOL_NAMES:
+        logger.info(
+            "Temporarily disabled tools are hidden from the runtime registry: %s",
+            ", ".join(sorted(TEMPORARILY_DISABLED_TOOL_NAMES)),
+        )
+
+    return loaded_tools + builtin_tools + mcp_tools

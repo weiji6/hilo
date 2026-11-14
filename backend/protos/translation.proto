@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package historyrag.translation.v1;
+
+service TranslationService {
+  rpc TranslateBlocks(TranslateBlocksRequest) returns (TranslateBlocksResponse);
+}
+
+message TranslationBlock {
+  string key = 1;
+  string text = 2;
+}
+
+message TranslateBlocksRequest {
+  repeated TranslationBlock blocks = 1;
+  string target_language = 2;
+  string source_language_hint = 3;
+}
+
+message TranslationResult {
+  string key = 1;
+  string translation = 2;
+  string source_language = 3;
+}
+
+message TranslateBlocksResponse {
+  string task_id = 1;
+  repeated TranslationResult translations = 2;
+  string detected_source_language = 3;
+}

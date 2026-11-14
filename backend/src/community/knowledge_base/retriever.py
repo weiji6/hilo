@@ -1,0 +1,513 @@
+import logging
+import re
+import time
+
+from langchain_core.embeddings import Embeddings
+from langchain_qdrant import QdrantVectorStore
+from qdrant_client import QdrantClient, models
+
+from src.community.knowledge_base.catalog import filter_book_catalog_entries, list_book_catalog
+from src.community.knowledge_base.keyword_search_index import search_keyword_documents
+from src.community.knowledge_base.query_expansion import build_query_variants
+from src.config.knowledge_base_config import get_knowledge_base_config
+from src.reflection import resolve_variable
+
+"""
+Module for retrieving documents from the knowledge base using Qdrant.
+"""
+
+logger = logging.getLogger(__name__)
+
+_retriever_instance = None
+DEFAULT_SEARCH_SCOPES = ("user", "thread", "global")
+MIN_RESULT_LIMIT = 6
+MIN_PER_QUERY_TOP_K = 4
+MAX_QUERY_VARIANTS = 8
+MAX_DOC_ID_QUERY_VARIANTS = 5
+MIN_SUBSTANTIVE_WORD_UNITS = 50
+EXACT_LOOKUP_HINTS = (
+    "原文",
+    "原句",
+    "逐字",
+    "页",
+    "段",
+    "行",
+    "表",
+    "图",
+    "标题",
+    "引文",
+    "引用",
+    "怎么写",
+)
+BROAD_EXPLORATION_HINTS = (
+    "人物",
+    "时期",
+    "时代",
+    "阶段",
+    "历史",
+    "沿革",
+    "演变",
+    "变迁",
+    "经过",
+    "原因",
+    "影响",
+    "生平",
+    "经历",
+    "活动",
+    "思想",
+    "政策",
+    "制度",
+)
+SCOPE_BOOSTS = {
+    "user": 1.05,
+    "thread": 1.0,
+    "global": 0.95,
+}
+
+
+def _normalize_query_text(query: str) -> str:
+    return re.sub(r"\s+", " ", query).strip()
+
+
+def _count_word_units(text: str) -> int:
+    return len(re.findall(r"[\u4e00-\u9fff]|[A-Za-z0-9]+", text))
+
+
+def _is_substantive_result(result: dict, *, min_word_units: int = MIN_SUBSTANTIVE_WORD_UNITS) -> bool:
+    content = str(result.get("content") or "").strip()
+    if not content:
+        return False
+    return _count_word_units(content) >= min_word_units
+
+
+def _looks_like_fragmentary_result(result: dict, *, min_word_units: int) -> bool:
+    content = str(result.get("content") or "").strip()
+    if not content:
+        return True
+    if _count_word_units(content) < min_word_units:
+        return True
+
+    normalized = re.sub(r"\s+", " ", content)
+    if len(normalized) <= 24:
+        return True
+
+    punctuation_count = len(re.findall(r"[，。；：、“”‘’！？,.!?;:]", normalized))
+    alnum_or_cjk_count = len(re.findall(r"[\u4e00-\u9fffA-Za-z0-9]", normalized))
+    if alnum_or_cjk_count <= 0:
+        return True
+
+    if punctuation_count == 0 and alnum_or_cjk_count < max(28, min_word_units):
+        return True
+
+    metadata = result.get("metadata", {}) or {}
+    line_start = metadata.get("line_start")
+    line_end = metadata.get("line_end")
+    if line_start is not None and line_end is not None and int(line_start) == int(line_end) and alnum_or_cjk_count < max(40, min_word_units + 10):
+        return True
+
+    return False
+
+
+def _looks_like_exact_lookup(query: str) -> bool:
+    normalized = _normalize_query_text(query)
+    if not normalized:
+        return False
+    if any(marker in normalized for marker in ("“", "”", '"', "《", "》")):
+        return True
+    if re.search(r"第\s*\d+\s*[页段行章节卷]", normalized):
+        return True
+    return any(hint in normalized for hint in EXACT_LOOKUP_HINTS)
+
+
+def _is_broad_exploration_query(query: str) -> bool:
+    normalized = _normalize_query_text(query)
+    if not normalized or _looks_like_exact_lookup(normalized):
+        return False
+    if len(normalized) <= 24:
+        return True
+    return any(hint in normalized for hint in BROAD_EXPLORATION_HINTS)
+
+
+def _build_query_variants(query: str) -> list[dict[str, str | float]]:
+    return build_query_variants(query, broad=_is_broad_exploration_query(query), limit=MAX_QUERY_VARIANTS)
+
+
+def _build_doc_id_query_variants(query: str) -> list[dict[str, str | float]]:
+    return build_query_variants(query, scoped=True, limit=MAX_DOC_ID_QUERY_VARIANTS)
+
+
+def _select_query_variants(query: str, doc_ids: list[str] | None = None) -> list[dict[str, str | float]]:
+    if not doc_ids:
+        return _build_query_variants(query)
+    # When the search is already narrowed to specific books, keep the query
+    # anchored to the same books, but still allow a few nearby retries such as
+    # period aliases and narrower topic facets.
+    return _build_doc_id_query_variants(query)
+
+
+SOURCE_KIND_BOOSTS = {
+    "annotation": 1.30,
+    "excerpt": 1.20,
+    "upload": 1.10,
+    "thread_upload": 1.00,
+    "global_document": 0.95,
+    "translation": 0.85,
+}
+
+
+def get_embedding_model() -> Embeddings:
+    """Get the embedding model based on configuration."""
+    config = get_knowledge_base_config()
+    if not config.embedding:
+        raise ValueError("Embedding configuration is missing")
+
+    kwargs = {}
+    if config.embedding.api_key:
+        kwargs["api_key"] = config.embedding.api_key
+    if config.embedding.api_base:
+        kwargs["base_url"] = config.embedding.api_base
+
+    kwargs["model"] = config.embedding.model
+
+    # OpenRouter's embeddings endpoint accepts raw string input but does not
+    # reliably handle the token-id payload shape generated by LangChain's
+    # length-safe embedding path for unknown models.
+    if config.embedding.api_base and "openrouter.ai" in config.embedding.api_base:
+        kwargs["check_embedding_ctx_length"] = False
+
+    return resolve_variable(config.embedding.use)(**kwargs)
+
+
+def get_qdrant_client() -> QdrantClient:
+    """Get the Qdrant client based on configuration."""
+    config = get_knowledge_base_config()
+
+    if config.qdrant.mode == "server":
+        if not config.qdrant.url:
+            raise ValueError("Qdrant URL is required for server mode")
+        return QdrantClient(
+            url=config.qdrant.url,
+            api_key=config.qdrant.api_key,
+            timeout=config.qdrant.request_timeout,
+        )
+    return QdrantClient(path=config.qdrant.local_path)
+
+
+class KnowledgeBaseRetriever:
+    """Retriever for the knowledge base."""
+
+    def __init__(self):
+        """Initialize the retriever."""
+        self.config = get_knowledge_base_config()
+        self.client: QdrantClient | None = None
+        self.embeddings: Embeddings | None = None
+
+    def _ensure_vector_runtime(self) -> tuple[QdrantClient, Embeddings]:
+        if self.client is None:
+            self.client = get_qdrant_client()
+        if self.embeddings is None:
+            self.embeddings = get_embedding_model()
+        return self.client, self.embeddings
+
+    def _score_result(self, result: dict) -> float:
+        metadata = result.get("metadata", {})
+        scope = str(metadata.get("scope") or "global")
+        source_kind = str(metadata.get("source_kind") or ("thread_upload" if scope == "thread" else "upload" if scope == "user" else "global_document"))
+        base_score = float(result.get("score", 0.0) or 0.0)
+        query_variant_weight = float(result.get("query_variant_weight", 1.0) or 1.0)
+        return base_score * SCOPE_BOOSTS.get(scope, 1.0) * SOURCE_KIND_BOOSTS.get(source_kind, 1.0) * query_variant_weight
+
+    def _search_collection(
+        self,
+        collection_name: str,
+        query: str,
+        doc_ids: list[str] | None = None,
+        top_k: int | None = None,
+    ) -> list[dict]:
+        client, embeddings = self._ensure_vector_runtime()
+        vector_store = QdrantVectorStore(
+            client=client,
+            collection_name=collection_name,
+            embedding=embeddings,
+        )
+
+        qdrant_filter = None
+        if doc_ids:
+            qdrant_filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.doc_id",
+                        match=models.MatchAny(any=doc_ids),
+                    )
+                ]
+            )
+
+        limit = top_k or self.config.retrieval.top_k
+        results = vector_store.similarity_search_with_score(
+            query,
+            k=limit,
+            filter=qdrant_filter,
+            score_threshold=self.config.retrieval.score_threshold,
+        )
+
+        if not results and (self.config.retrieval.score_threshold or 0) > 0:
+            # Fallback: keep the same collection/filter, but relax the threshold so
+            # broad historical queries still surface candidate passages instead of
+            # returning an empty tool result to the model.
+            results = vector_store.similarity_search_with_score(
+                query,
+                k=max(limit, MIN_PER_QUERY_TOP_K * 2),
+                filter=qdrant_filter,
+                score_threshold=0.0,
+            )
+
+        formatted_results: list[dict] = []
+        for doc, score in results:
+            formatted_results.append(
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata,
+                    "score": score,
+                    "source": doc.metadata.get("source", "Unknown"),
+                    "filename": doc.metadata.get(
+                        "filename",
+                        doc.metadata.get("source", "").split("/")[-1],
+                    ),
+                    "page": doc.metadata.get("page"),
+                    "source_type": doc.metadata.get("source_type", "unknown"),
+                    "collection_name": collection_name,
+                }
+            )
+
+        return formatted_results
+
+    def _resolve_effective_doc_ids(
+        self,
+        *,
+        thread_id: str | None,
+        user_id: str | None,
+        doc_ids: list[str] | None,
+        scopes: list[str] | None,
+        folder_paths: list[str] | None,
+    ) -> list[str] | None:
+        if not folder_paths:
+            return doc_ids
+
+        visible_entries = filter_book_catalog_entries(
+            list_book_catalog(
+                thread_id=thread_id,
+                user_id=user_id,
+                include_search_content=False,
+                caller="retriever._resolve_effective_doc_ids",
+            ),
+            doc_ids=doc_ids,
+            scopes=scopes,
+            folder_paths=folder_paths,
+        )
+        logger.info(
+            "Knowledge effective doc_ids resolution: requested_doc_ids=%s scopes=%s folder_paths=%s matched_entries=%s thread_id=%s has_user=%s",
+            len(doc_ids or []),
+            ",".join(scopes or []),
+            ",".join(folder_paths or []),
+            len(visible_entries),
+            thread_id,
+            bool(user_id),
+        )
+        if not visible_entries:
+            logger.info(
+                "Knowledge effective doc_ids empty after filtering: requested_doc_ids=%s scopes=%s folder_paths=%s thread_id=%s has_user=%s",
+                len(doc_ids or []),
+                ",".join(scopes or []),
+                ",".join(folder_paths or []),
+                thread_id,
+                bool(user_id),
+            )
+            return []
+        return [entry.doc_id for entry in visible_entries]
+
+    def _merge_duplicate_results(self, results: list[dict]) -> list[dict]:
+        deduped: dict[tuple[str, int | None, int | None, str, str], dict] = {}
+        for result in results:
+            metadata = result.get("metadata", {})
+            dedupe_key = (
+                metadata.get("origin_doc_id") or metadata.get("doc_id") or result.get("filename", ""),
+                metadata.get("pdf_page_no") or metadata.get("page_no") or metadata.get("page") or metadata.get("line_start"),
+                metadata.get("paragraph_no_in_doc") or metadata.get("paragraph_no") or metadata.get("line_end"),
+                result.get("content", ""),
+                metadata.get("source_kind", ""),
+            )
+            existing = deduped.get(dedupe_key)
+            if existing is None:
+                result.setdefault("matched_queries", [])
+                if result.get("matched_query") and result["matched_query"] not in result["matched_queries"]:
+                    result["matched_queries"].append(result["matched_query"])
+                deduped[dedupe_key] = result
+                continue
+
+            existing_queries = existing.setdefault("matched_queries", [])
+            for matched_query in result.get("matched_queries") or []:
+                if matched_query not in existing_queries:
+                    existing_queries.append(matched_query)
+            if result.get("matched_query") and result["matched_query"] not in existing_queries:
+                existing_queries.append(result["matched_query"])
+            existing_keywords = existing.setdefault("matched_keywords", [])
+            for matched_keyword in result.get("matched_keywords") or []:
+                if matched_keyword not in existing_keywords:
+                    existing_keywords.append(matched_keyword)
+            if result.get("weighted_score", result.get("score", 0)) > existing.get(
+                "weighted_score",
+                existing.get("score", 0),
+            ):
+                existing.update(result)
+                existing["matched_queries"] = existing_queries
+                existing["matched_keywords"] = existing_keywords
+
+        return list(deduped.values())
+
+    def _select_diverse_results(self, results: list[dict], limit: int) -> list[dict]:
+        remaining = list(results)
+        selected: list[dict] = []
+        seen_doc_ids: dict[str, int] = {}
+        seen_titles: dict[str, int] = {}
+
+        while remaining and len(selected) < limit:
+            best_index = 0
+            best_score = -1.0
+            for index, candidate in enumerate(remaining):
+                metadata = candidate.get("metadata", {})
+                doc_id = str(metadata.get("origin_doc_id") or metadata.get("doc_id") or "")
+                title = str(metadata.get("title") or candidate.get("filename") or "")
+                adjusted_score = float(candidate.get("weighted_score", candidate.get("score", 0.0)) or 0.0)
+                adjusted_score *= 0.9 ** seen_doc_ids.get(doc_id, 0)
+                adjusted_score *= 0.95 ** seen_titles.get(title, 0)
+                if adjusted_score > best_score:
+                    best_index = index
+                    best_score = adjusted_score
+
+            chosen = remaining.pop(best_index)
+            selected.append(chosen)
+            chosen_metadata = chosen.get("metadata", {})
+            chosen_doc_id = str(chosen_metadata.get("origin_doc_id") or chosen_metadata.get("doc_id") or "")
+            chosen_title = str(chosen_metadata.get("title") or chosen.get("filename") or "")
+            if chosen_doc_id:
+                seen_doc_ids[chosen_doc_id] = seen_doc_ids.get(chosen_doc_id, 0) + 1
+            if chosen_title:
+                seen_titles[chosen_title] = seen_titles.get(chosen_title, 0) + 1
+
+        return selected
+
+    def _prepare_ranked_results(self, results: list[dict], *, limit: int) -> tuple[list[dict], int]:
+        for result in results:
+            result["weighted_score"] = self._score_result(result)
+
+        results.sort(key=lambda item: item.get("weighted_score", item.get("score", 0)), reverse=True)
+        deduped_results = self._merge_duplicate_results(results)
+        deduped_results.sort(key=lambda item: item.get("weighted_score", item.get("score", 0)), reverse=True)
+        return self._select_diverse_results(deduped_results, limit=limit), len(deduped_results)
+
+    def search(
+        self,
+        query: str,
+        thread_id: str | None = None,
+        user_id: str | None = None,
+        doc_ids: list[str] | None = None,
+        scopes: list[str] | None = None,
+        folder_paths: list[str] | None = None,
+    ) -> list[dict]:
+        """Search for relevant documents."""
+        started_at = time.perf_counter()
+        enabled_scopes = scopes or list(DEFAULT_SEARCH_SCOPES)
+        effective_doc_ids = self._resolve_effective_doc_ids(
+            thread_id=thread_id,
+            user_id=user_id,
+            doc_ids=doc_ids,
+            scopes=enabled_scopes,
+            folder_paths=folder_paths,
+        )
+        if effective_doc_ids == []:
+            logger.info(
+                "Knowledge search skipped: query=%r folder_paths=%s scopes=%s effective_doc_ids=0 elapsed_ms=%.1f",
+                query,
+                ",".join(folder_paths or []),
+                ",".join(enabled_scopes),
+                (time.perf_counter() - started_at) * 1000,
+            )
+            return []
+        final_limit = max(
+            self.config.retrieval.top_k,
+            MIN_RESULT_LIMIT if effective_doc_ids else self.config.retrieval.top_k,
+        )
+        keyword_started_at = time.perf_counter()
+        merged_results = search_keyword_documents(
+            query,
+            thread_id=thread_id if "thread" in enabled_scopes else None,
+            user_id=user_id if "user" in enabled_scopes else None,
+            doc_ids=effective_doc_ids or [],
+            top_k=final_limit,
+        )
+        logger.info(
+            "Knowledge keyword search: query=%r doc_ids=%s hits=%s elapsed_ms=%.1f",
+            query,
+            len(effective_doc_ids or []),
+            len(merged_results),
+            (time.perf_counter() - keyword_started_at) * 1000,
+        )
+        for result in merged_results:
+            result["matched_query"] = "关键词检索"
+            result["query_variant"] = query
+            result["query_variant_weight"] = 1.0
+            matched_queries = result.setdefault("matched_queries", [])
+            if "关键词检索" not in matched_queries:
+                matched_queries.append("关键词检索")
+
+        merged_results = [result for result in merged_results if _is_substantive_result(result, min_word_units=18)]
+
+        selected, deduped_count = self._prepare_ranked_results(merged_results, limit=final_limit)
+        logger.info(
+            "Knowledge search complete: query=%r mode=keyword_only doc_ids=%s merged=%s deduped=%s returned=%s elapsed_ms=%.1f",
+            query,
+            len(effective_doc_ids or []),
+            len(merged_results),
+            deduped_count,
+            len(selected),
+            (time.perf_counter() - started_at) * 1000,
+        )
+        return selected
+
+    def search_qdrant(
+        self,
+        query: str,
+        *,
+        doc_ids: list[str] | None = None,
+        top_k: int | None = None,
+    ) -> list[dict]:
+        """Run direct vector retrieval against the configured Qdrant collection."""
+        started_at = time.perf_counter()
+        limit = top_k or self.config.retrieval.top_k
+        raw_results = self._search_collection(
+            self.config.qdrant.collection_name,
+            query,
+            doc_ids=doc_ids,
+            top_k=max(limit * 6, limit),
+        )
+        filtered_results = [result for result in raw_results if not _looks_like_fragmentary_result(result, min_word_units=18)]
+        candidate_results = filtered_results or raw_results
+        selected, _ = self._prepare_ranked_results(candidate_results, limit=limit)
+        logger.info(
+            "Knowledge qdrant debug search: query=%r doc_ids=%s raw=%s filtered=%s returned=%s elapsed_ms=%.1f",
+            query,
+            len(doc_ids or []),
+            len(raw_results),
+            len(filtered_results),
+            len(selected),
+            (time.perf_counter() - started_at) * 1000,
+        )
+        return selected
+
+
+def get_retriever() -> KnowledgeBaseRetriever:
+    """Get the singleton retriever instance."""
+    global _retriever_instance
+    if _retriever_instance is None:
+        _retriever_instance = KnowledgeBaseRetriever()
+    return _retriever_instance

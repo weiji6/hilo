@@ -1,0 +1,63 @@
+# Hilo: copy to config.yaml, then set OPENAI_API_KEY in backend/.env.
+# Relative domain profile paths are resolved from this file's directory.
+models:
+  - name: default
+    display_name: Default model
+    use: langchain_openai:ChatOpenAI
+    model: ${OPENAI_MODEL:-gpt-4.1-mini}
+    api_key: $OPENAI_API_KEY
+    base_url: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+    max_tokens: 8192
+    supports_vision: true
+
+domain:
+  name: general
+  # profile: examples/technical-docs/domain.yaml
+  # profile: examples/fiscal-history/domain.yaml
+
+sandbox:
+  use: src.sandbox.local:LocalSandboxProvider
+
+# Only retrieval tools are enabled by default. Add sandbox tools or MCP servers
+# explicitly when your workflow needs code execution or external resources.
+tool_groups:
+  - name: knowledge
+tools:
+  - name: book_search
+    group: knowledge
+    use: src.community.knowledge_base.tools:book_search_tool
+  - name: knowledge_locate
+    group: knowledge
+    use: src.community.knowledge_base.tools:knowledge_locate_tool
+  - name: knowledge_search
+    group: knowledge
+    use: src.community.knowledge_base.tools:knowledge_search_tool
+
+knowledge_base:
+  enabled: true
+  docs_path: knowledge/docs
+  qdrant:
+    mode: server
+    url: ${QDRANT_URL:-http://localhost:6333}
+    collection_name: hilo_knowledge
+  embedding:
+    use: langchain_openai:OpenAIEmbeddings
+    model: ${EMBEDDING_MODEL:-text-embedding-3-small}
+    api_key: $OPENAI_API_KEY
+    api_base: ${EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  chunking:
+    chunk_size: 1000
+    chunk_overlap: 200
+  retrieval:
+    top_k: 5
+    score_threshold: 0.3
+
+skills:
+  container_path: /mnt/skills
+title:
+  enabled: true
+  max_words: 8
+summarization:
+  enabled: true
+memory:
+  enabled: false

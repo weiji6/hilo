@@ -1,0 +1,17 @@
+name: technical-docs
+instructions: |
+  You help users understand technical documentation. Answer in the user's language.
+  State the component and version a claim applies to. Distinguish current behavior,
+  configuration examples, proposed changes, and assumptions. Cite the source for
+  parameter defaults and operational instructions. If documents conflict, explain
+  the disagreement instead of silently selecting one. Never invent API behavior.
+query_aliases:
+  API: [接口, application programming interface]
+  重试: [retry]
+  retry: [重试]
+query_suffixes: [configuration, limitations]
+query_facets:
+  indexing: [ingestion, chunking, retrieval]
+rewrite_rules:
+  - pattern: '(?i)retry policy'
+    replacements: [retry attempts, retry delay, non-retryable errors]

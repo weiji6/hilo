@@ -1,0 +1,100 @@
+name: hilo
+
+x-backend: &backend
+  build:
+    context: ..
+    dockerfile: backend/Dockerfile
+  env_file: ../backend/.env
+  environment:
+    HILO_CONFIG_PATH: /app/config.yaml
+    HILO_HOME: /app/backend/.deer-flow
+    QDRANT_URL: http://qdrant:6333
+    TASK_MEMORY_ENABLED: "false"
+  volumes:
+    - ../config.yaml:/app/config.yaml:ro
+    - ../examples:/app/examples:ro
+    - ../skills:/app/skills:ro
+    - ../knowledge:/app/knowledge
+    - hilo-data:/app/backend/.deer-flow
+  working_dir: /app/backend
+  depends_on:
+    - qdrant
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.17.0
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+  mysql:
+    image: mariadb:10.11
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: hilo
+      MARIADB_USER: hilo
+      MARIADB_PASSWORD: hilo-local-dev
+    volumes:
+      - auth-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  gateway:
+    <<: *backend
+    command: ["python", "-m", "uvicorn", "src.gateway.app:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  langgraph:
+    <<: *backend
+    command: ["langgraph", "dev", "--no-browser", "--allow-blocking", "--no-reload", "--host", "0.0.0.0", "--port", "2024"]
+    volumes:
+      - ../config.yaml:/app/config.yaml:ro
+      - ../examples:/app/examples:ro
+      - ../skills:/app/skills:ro
+      - ../knowledge:/app/knowledge
+      - hilo-data:/app/backend/.deer-flow
+      - checkpoints:/app/backend/.langgraph_api
+
+  auth-migrate:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    env_file: ../frontend/.env
+    environment:
+      DATABASE_URL: mysql://hilo:hilo-local-dev@mysql:3306/hilo
+    command: ["sh", "-c", "cd frontend && pnpm auth:migrate"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    env_file: ../frontend/.env
+    environment:
+      DATABASE_URL: mysql://hilo:hilo-local-dev@mysql:3306/hilo
+      BACKEND_BASE_URL: http://gateway:8001
+      LANGGRAPH_BASE_URL: http://langgraph:2024
+    command: ["sh", "-c", "cd frontend && pnpm dev --hostname 0.0.0.0"]
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:2026:2026"
+    volumes:
+      - ./nginx/hilo.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - gateway
+      - langgraph
+
+volumes:
+  hilo-data:
+  qdrant-data:
+  auth-data:
+  checkpoints:

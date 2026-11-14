@@ -1,0 +1,47 @@
+[project]
+name = "hilo-framework"
+version = "0.1.0"
+description = "Extensible Agentic RAG and knowledge research framework, built on DeerFlow"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "agent-sandbox>=0.0.19",
+    "dotenv>=0.9.9",
+    "fastapi>=0.115.0",
+    "httpx>=0.28.0",
+    "kubernetes>=30.0.0",
+    "langchain>=1.2.3",
+    "langchain-deepseek>=1.0.1",
+    "langchain-mcp-adapters>=0.1.0",
+    "langchain-openai>=1.1.7",
+    "langgraph>=1.0.6",
+    "langgraph-cli[inmem]>=0.4.11",
+    "markdownify>=1.2.2",
+    "markitdown[all,xlsx]>=0.0.1a2",
+    "requests>=2.32.0",
+    "pydantic>=2.12.5",
+    "python-multipart>=0.0.20",
+    "pyyaml>=6.0.3",
+    "readabilipy>=0.3.0",
+    "sse-starlette>=2.1.0",
+    "tavily-python>=0.7.17",
+    "firecrawl-py>=1.15.0",
+    "grpcio>=1.76.0",
+    "tiktoken>=0.8.0",
+    "uvicorn[standard]>=0.34.0",
+    "ddgs>=9.10.0",
+    "duckdb>=1.4.4",
+    "qdrant-client>=1.17.0",
+    "langchain-qdrant>=1.1.0",
+    "langchain-community>=0.4.1",
+    "langchain-text-splitters>=1.1.1",
+    "unstructured[md]>=0.21.5",
+    "oss2>=2.19.1",
+    "dashscope>=1.25.12",
+    "volcengine-python-sdk[ark]>=1.0.0",
+    "pymupdf>=1.26.4",
+    "langchain-anthropic==1.2.0",
+]
+
+[dependency-groups]
+dev = ["grpcio-tools>=1.75.1", "pytest>=8.0.0", "ruff>=0.14.11"]
