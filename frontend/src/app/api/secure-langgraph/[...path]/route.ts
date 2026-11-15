@@ -57,14 +57,20 @@ function bindRunIdentity(
   threadId: string,
 ) {
   const config = asRecord(body?.config);
-  const identity = { user_id: userId, thread_id: threadId };
+  const configurable = asRecord(config.configurable);
+  const boundConfigurable = { ...configurable };
+  if (Object.hasOwn(configurable, "user_id")) {
+    boundConfigurable.user_id = userId;
+  }
+  if (Object.hasOwn(configurable, "thread_id")) {
+    boundConfigurable.thread_id = threadId;
+  }
   return {
     ...body,
-    context: { ...asRecord(body?.context), ...identity },
-    config: {
-      ...config,
-      configurable: { ...asRecord(config.configurable), ...identity },
-    },
+    context: { ...asRecord(body?.context), user_id: userId, thread_id: threadId },
+    config: Object.hasOwn(config, "configurable")
+      ? { ...config, configurable: boundConfigurable }
+      : config,
   };
 }
 
