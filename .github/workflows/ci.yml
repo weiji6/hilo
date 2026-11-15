@@ -57,7 +57,7 @@ jobs:
           docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T gateway python -m src.community.knowledge_base.indexer
       - name: Full-stack HTTP acceptance
         run: python3 backend/tests/stack_smoke.py
-      - name: Shared extensions and Skills visible to agent process
+      - name: Installed Skills visible to agent process
         run: |
           docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T langgraph python -c "from src.skills import load_skills; assert any(s.name == 'hilo-smoke' for s in load_skills())"
       - name: Stack diagnostics

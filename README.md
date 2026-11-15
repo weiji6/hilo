@@ -52,7 +52,8 @@ make index-knowledge
 
 使用 `make docker-stop` 停止服务。命名卷会保留运行数据、检查点、认证数据库与向量索引。
 这是一套本地开发配置；对外部署前请阅读 [SECURITY.md](SECURITY.md)。
-完整 Docker 启动、真实模型回答与外部 OCR 服务仍需要在目标环境中验证，见[功能核对记录](docs/functionality-audit.md)。
+独立整栈验收已验证全新 Docker 构建、注册登录、文档上传与索引、Skills 安装和 SSE 引用问答。
+聊天与嵌入使用确定性的 HTTP 测试服务；真实模型效果及外部 OCR 仍需单独验证，见[功能核对记录](docs/functionality-audit.md)。
 
 ## 接入自己的领域
 

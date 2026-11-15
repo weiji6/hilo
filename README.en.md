@@ -153,8 +153,10 @@ Files with ingestion records follow those records to avoid indexing both the raw
 source and its structured output. The Docker gateway and agent services share
 extensions configuration and a writable custom Skills volume.
 
-Full Docker startup, live-model answers, and external OCR still require validation
-in the target environment.
+Full-stack acceptance verifies clean Docker builds, authentication, uploads,
+indexing, custom Skills and cited answers over HTTP SSE. Chat and embedding
+providers are deterministic HTTP fixtures; live-model quality and external OCR
+still require separate validation. See the [functionality audit](docs/functionality-audit.md).
 
 The lead agent selects sources. Ordinary questions retrieve evidence directly;
 explicit research tasks can delegate bounded work. Child results are synthesized

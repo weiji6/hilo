@@ -80,6 +80,9 @@ Python/npm mirrors. The separate smoke Compose overlay uses deterministic HTTP
 model fixtures and its own project volumes for complete stack acceptance.
 Agent exports load the lead-agent factory lazily so a fresh process can import
 the subagent executor without a circular import through the middleware chain.
+The factory itself is a concrete module export because LangGraph discovers it
+through the module dictionary. The proxy starts only after the gateway,
+LangGraph API and frontend session endpoint pass their health checks.
 
 ## Source publication and supporting tools
 
