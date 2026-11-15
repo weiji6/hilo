@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from src.community.knowledge_base.book_metadata import normalize_folder_path
 from src.community.knowledge_base.common import derive_global_doc_id, get_user_collection_name, resolve_project_path
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS
+from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
 from src.community.knowledge_base.folder_registry import (
     delete_folder_path,
     ensure_folder_path,
@@ -622,15 +622,18 @@ def _process_user_record_ocr(user_id: str, record_id: str) -> None:
         file_ext = file_path.suffix.lower()
         if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in {".md", ".txt"}:
             hints = record.get("hints") or {}
-            record["parse_method"] = "ocr_pdf_mineru_grpc"
+            record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
             save_user_record(user_id, record)
-            structured_payload = build_structured_document_from_mineru_grpc(
-                file_path,
-                title=str(record.get("display_title") or Path(source_filename).stem),
-                parser_name=str(record["parse_method"]),
-                hints=hints,
-                language_hint=hints.get("language_hint"),
-            )
+            if file_ext in {".md", ".txt"}:
+                structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
+            else:
+                structured_payload = build_structured_document_from_mineru_grpc(
+                    file_path,
+                    title=str(record.get("display_title") or Path(source_filename).stem),
+                    parser_name=str(record["parse_method"]),
+                    hints=hints,
+                    language_hint=hints.get("language_hint"),
+                )
             structured_filename = persist_user_structured_document(
                 user_id,
                 source_filename,

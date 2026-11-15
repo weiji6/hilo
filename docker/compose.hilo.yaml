@@ -7,13 +7,16 @@ x-backend: &backend
   env_file: ../backend/.env
   environment:
     HILO_CONFIG_PATH: /app/config.yaml
+    HILO_EXTENSIONS_CONFIG_PATH: /app/extensions_config.json
     HILO_HOME: /app/backend/.deer-flow
     QDRANT_URL: http://qdrant:6333
     TASK_MEMORY_ENABLED: "false"
   volumes:
     - ../config.yaml:/app/config.yaml:ro
     - ../examples:/app/examples:ro
+    - ../extensions_config.json:/app/extensions_config.json
     - ../skills:/app/skills:ro
+    - custom-skills:/app/skills/custom
     - ../knowledge:/app/knowledge
     - hilo-data:/app/backend/.deer-flow
   working_dir: /app/backend
@@ -51,7 +54,9 @@ services:
     volumes:
       - ../config.yaml:/app/config.yaml:ro
       - ../examples:/app/examples:ro
+      - ../extensions_config.json:/app/extensions_config.json
       - ../skills:/app/skills:ro
+      - custom-skills:/app/skills/custom
       - ../knowledge:/app/knowledge
       - hilo-data:/app/backend/.deer-flow
       - checkpoints:/app/backend/.langgraph_api
@@ -98,3 +103,4 @@ volumes:
   qdrant-data:
   auth-data:
   checkpoints:
+  custom-skills:

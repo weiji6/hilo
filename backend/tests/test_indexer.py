@@ -1,86 +1,10 @@
-import sys
+from pathlib import Path
 from threading import Lock
 from time import sleep
-from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import httpx
 from langchain_core.documents import Document
-
-if "qdrant_client" not in sys.modules:
-    qdrant_client = ModuleType("qdrant_client")
-    qdrant_http = ModuleType("qdrant_client.http")
-    qdrant_http_exceptions = ModuleType("qdrant_client.http.exceptions")
-    qdrant_models = ModuleType("qdrant_client.models")
-
-    class _DummyQdrantClient:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-    class _DummyDistance:  # pragma: no cover - test import shim
-        COSINE = "cosine"
-
-    class _DummyVectorParams:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyFilter:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyFieldCondition:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyMatchAny:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyResponseHandlingException(Exception):  # pragma: no cover - test import shim
-        def __init__(self, source: Exception) -> None:
-            super().__init__(str(source))
-            self.source = source
-
-    qdrant_client.QdrantClient = _DummyQdrantClient
-    qdrant_client.models = qdrant_models
-    qdrant_client.http = qdrant_http
-    qdrant_models.Distance = _DummyDistance
-    qdrant_models.VectorParams = _DummyVectorParams
-    qdrant_models.Filter = _DummyFilter
-    qdrant_models.FieldCondition = _DummyFieldCondition
-    qdrant_models.MatchAny = _DummyMatchAny
-    qdrant_http.exceptions = qdrant_http_exceptions
-    qdrant_http_exceptions.ResponseHandlingException = _DummyResponseHandlingException
-    sys.modules["qdrant_client"] = qdrant_client
-    sys.modules["qdrant_client.http"] = qdrant_http
-    sys.modules["qdrant_client.http.exceptions"] = qdrant_http_exceptions
-    sys.modules["qdrant_client.models"] = qdrant_models
-
-if "langchain_qdrant" not in sys.modules:
-    langchain_qdrant = ModuleType("langchain_qdrant")
-
-    class _DummyQdrantVectorStore:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def add_documents(self, *args, **kwargs):
-            return None
-
-    langchain_qdrant.QdrantVectorStore = _DummyQdrantVectorStore
-    sys.modules["langchain_qdrant"] = langchain_qdrant
-
-if "src.reflection" not in sys.modules:
-    reflection = ModuleType("src.reflection")
-
-    def _resolve_variable(value):  # pragma: no cover - test import shim
-        return value
-
-    reflection.resolve_variable = _resolve_variable
-    sys.modules["src.reflection"] = reflection
 
 from src.community.knowledge_base import indexer
 

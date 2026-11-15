@@ -1,16 +1,16 @@
 """Index documents into the knowledge base."""
 
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 import json
 import logging
 from collections.abc import Callable
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from hashlib import sha1
 from pathlib import Path
 from time import perf_counter, sleep
 from uuid import NAMESPACE_URL, uuid5
 
 import httpx
-from langchain_community.document_loaders import PyMuPDFLoader, TextLoader, UnstructuredMarkdownLoader
+from langchain_community.document_loaders import PyMuPDFLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -137,7 +137,7 @@ def _load_documents_from_paths(paths: list[Path]) -> list[Document]:
             if suffix == ".json":
                 documents.extend(_load_structured_documents(path))
             elif suffix == ".md":
-                loaded = UnstructuredMarkdownLoader(str(path)).load()
+                loaded = TextLoader(str(path), encoding="utf-8-sig").load()
                 for document in loaded:
                     document.metadata["source_type"] = "markdown"
                 documents.extend(loaded)
@@ -798,6 +798,8 @@ def rebuild_global_knowledge_index() -> int:
                 payload = json.loads(path.read_text(encoding="utf-8"))
             except Exception:
                 continue
+            if not isinstance(payload, dict) or payload.get("schema_version") == 1:
+                continue
             source_filename = payload.get("source_filename")
             if source_filename:
                 records_by_source_filename[str(source_filename)] = payload
@@ -811,6 +813,20 @@ def rebuild_global_knowledge_index() -> int:
             candidate = Path(str(target_path))
             if not candidate.exists() or candidate in seen_paths:
                 continue
+            candidate_paths.append(candidate)
+            seen_paths.add(candidate)
+
+    # Files copied by `make config` have no ingestion record yet. Index local
+    # text directly, but respect pending/failed ingestion records and do not
+    # index the raw source a second time alongside its structured version.
+    for candidate in sorted(docs_path.iterdir()):
+        if (
+            candidate.is_file()
+            and not candidate.name.startswith(".")
+            and candidate.suffix.lower() in {".md", ".txt"}
+            and candidate.name not in records_by_source_filename
+            and candidate not in seen_paths
+        ):
             candidate_paths.append(candidate)
             seen_paths.add(candidate)
 

@@ -1,26 +1,9 @@
 from __future__ import annotations
 
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
-
-langchain_qdrant_stub = ModuleType("langchain_qdrant")
-langchain_qdrant_stub.QdrantVectorStore = object
-qdrant_models_stub = ModuleType("qdrant_client.models")
-qdrant_models_stub.Distance = SimpleNamespace(COSINE="Cosine")
-qdrant_models_stub.VectorParams = object
-qdrant_client_stub = ModuleType("qdrant_client")
-qdrant_client_stub.QdrantClient = object
-retriever_stub = ModuleType("src.community.knowledge_base.retriever")
-retriever_stub.get_embedding_model = lambda: object()
-retriever_stub.get_qdrant_client = lambda: object()
-
-sys.modules.setdefault("langchain_qdrant", langchain_qdrant_stub)
-sys.modules.setdefault("qdrant_client", qdrant_client_stub)
-sys.modules.setdefault("qdrant_client.models", qdrant_models_stub)
-sys.modules.setdefault("src.community.knowledge_base.retriever", retriever_stub)
 
 from src.agents.middlewares import task_memory_middleware  # noqa: E402
 from src.community.knowledge_base import task_memory  # noqa: E402

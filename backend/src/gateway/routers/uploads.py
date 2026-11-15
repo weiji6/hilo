@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.community.knowledge_base.book_metadata_runtime import maybe_generate_book_metadata
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS
+from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
 from src.community.knowledge_base.ingestion import (
     build_ingestion_record,
     build_ingestion_urls,
@@ -157,10 +157,12 @@ async def upload_files(
                     kb_config.mineru_api is not None
                     and kb_config.mineru_api.enabled
                 )
-                record["parse_method"] = "ocr_pdf_mineru_api" if use_remote_api else "ocr_pdf_mineru_grpc"
+                record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else ("ocr_pdf_mineru_api" if use_remote_api else "ocr_pdf_mineru_grpc")
                 file_info["parse_method"] = record["parse_method"]
                 try:
-                    if use_remote_api:
+                    if file_ext in {".md", ".txt"}:
+                        structured_payload = parse_local_text(file_path, title=record["display_title"], hints=hints)
+                    elif use_remote_api:
                         structured_payload = build_structured_document_from_mineru_api(
                             file_path,
                             title=record["display_title"],

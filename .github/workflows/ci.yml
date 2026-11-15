@@ -16,6 +16,11 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: uv sync --group dev
+      - name: Docker dependency manifest matches lockfile
+        working-directory: backend
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project --no-header --format requirements-txt --output-file /tmp/hilo-requirements.txt
+          diff -u requirements.txt /tmp/hilo-requirements.txt
       - name: Framework regressions
         run: make test
       - name: Publication inputs

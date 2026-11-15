@@ -93,6 +93,7 @@ domain:
 默认配置包含知识检索、`ls`、`read_file`、`bash`、网页抓取和图片搜索。
 文件读取用于按需加载 Skills；网页与图片工具需要相应外部网络服务。
 深度研究路径仍限制研究子 Agent 的工具与来源范围。MCP 通过本地扩展配置接入。
+Docker 中网关与 Agent 服务共享扩展配置和可写的自定义 Skills 卷，设置与安装结果可供两者使用。
 
 本地沙箱会在后端主机或容器内执行命令。需要隔离执行环境时，可配置继承自 DeerFlow 的
 AIO 沙箱或 [Kubernetes provisioner](docker/provisioner/README.md)；它们不随默认 Compose 自动启动。
@@ -112,6 +113,10 @@ uv run python scripts/local_ocr.py --input /path/to/pdfs --output /path/to/outpu
 入库脚本把 `.structured.json` 写入 SQLite 段落库，供正文定位和全文检索使用；
 `make index-knowledge` 则建立 Qdrant 向量索引。OCR 产物还需要放入知识库并执行入库/索引，
 不能仅运行 OCR 就视为完成知识接入。维护工具与验证边界见[功能核对记录](docs/functionality-audit.md)。
+
+UTF-8 Markdown/TXT 在本地解析，无需 OCR 服务。`make config` 复制的示例文档及直接放入
+`knowledge/docs` 的 Markdown/TXT 可通过 `make index-knowledge` 建立索引，也可直接定位正文并引用。
+已存在上传处理记录的文件按记录状态处理，避免重复索引原始文本和结构化产物。
 
 ## 架构
 
@@ -144,10 +149,10 @@ make test
 cd frontend && pnpm typecheck
 ```
 
-`make test` 运行框架回归测试，覆盖领域隔离、初始化与导出约束、检索预算、正文证据、
-目录路由、引用、可选任务记忆及发布完整性。它不等于全部历史测试或真实服务端到端验收。
-部分继承测试依赖额外模型/解析服务；详见 [CONTRIBUTING.md](CONTRIBUTING.md)
-与[功能核对记录](docs/functionality-audit.md)。
+`make test` 运行全部后端测试，覆盖领域隔离、初始化与导出约束、检索预算、正文证据、
+目录路由、引用、可选任务记忆及发布完整性。运行链路测试使用真实网关、解析器与嵌入式 Qdrant，
+并用本地模型替身验证同步/异步 Agent 执行与引用状态传递。它不等于真实服务端到端验收。
+详见 [CONTRIBUTING.md](CONTRIBUTING.md) 与[功能核对记录](docs/functionality-audit.md)。
 
 运行 `python3 scripts/export_open_source.py --check` 检查发布输入。
 `make export` 在 `release/hilo` 创建新的纯源码快照，排除 Git 历史、本地设置、运行数据、

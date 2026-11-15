@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -150,52 +149,16 @@ class TestSaveAndLoad:
 
 
 class TestListBookCatalogIntegration:
-    """Verify list_book_catalog uses SQLite on the second cold call."""
+    def test_sqlite_hit_avoids_file_rebuild(self, tmp_path: Path, db_path: Path, monkeypatch) -> None:
+        from types import SimpleNamespace
 
-    def test_sqlite_hit_avoids_file_rebuild(self, tmp_path: Path, db_path: Path) -> None:
-        import src.community.knowledge_base.catalog as catalog_mod
-        from unittest.mock import MagicMock
+        from src.community.knowledge_base import catalog
+        from src.community.knowledge_base.book_catalog_index import save_catalog_to_db
 
-        with catalog_mod._catalog_cache_lock:
-            catalog_mod._catalog_cache.clear()
-
-        build_count = {"n": 0}
-
-        def fake_build(*args, **kwargs):
-            build_count["n"] += 1
-            return [_make_entry("rebuilt")]
-
-        paths_mock = MagicMock()
-        paths_mock.knowledge_search_db_path.return_value = db_path
-        paths_mock.ensure_knowledge_search_dirs.return_value = None
-
-        fixed_mtime = 42.0
-
-        with (
-            patch.object(catalog_mod, "_build_global_entries", side_effect=fake_build),
-            patch.object(catalog_mod, "_load_book_metadata_index", return_value={}),
-            patch.object(catalog_mod, "get_knowledge_base_config", return_value=MagicMock(docs_path=str(tmp_path))),
-            patch.object(catalog_mod, "resolve_project_path", return_value=tmp_path),
-            patch.object(catalog_mod, "get_paths", return_value=MagicMock()),
-            patch.object(catalog_mod, "_catalog_mtime_signature", return_value=fixed_mtime),
-            patch("src.community.knowledge_base.book_catalog_index.get_paths", return_value=paths_mock),
-        ):
-            # First call: builds from files, writes to SQLite in background.
-            result1 = catalog_mod.list_book_catalog()
-            assert build_count["n"] == 1
-
-            # Wait briefly for background SQLite write to complete.
-            import time
-            time.sleep(0.2)
-
-            # Expire in-memory cache manually.
-            with catalog_mod._catalog_cache_lock:
-                catalog_mod._catalog_cache.clear()
-
-            # Second call: should hit SQLite, NOT rebuild from files.
-            result2 = catalog_mod.list_book_catalog()
-            assert build_count["n"] == 1, "Should not rebuild — SQLite cache should be hit"
-            assert len(result2) == 1
+        save_catalog_to_db(None, None, 0.0, [_make_entry("persisted")])
+        monkeypatch.setattr(catalog, "get_knowledge_base_config", lambda: SimpleNamespace(docs_path=str(tmp_path)))
+        monkeypatch.setattr(catalog, "_build_global_entries", lambda *a, **kw: pytest.fail("SQLite hit must not scan source files"))
+        assert [entry.doc_id for entry in catalog.list_book_catalog()] == ["persisted"]
 
 
 class TestSharedGlobalCache:
@@ -235,6 +198,7 @@ class TestSharedGlobalCache:
 
     def test_parallel_cold_loads_are_coalesced(self, db_path, monkeypatch):
         from concurrent.futures import ThreadPoolExecutor
+
         from src.community.knowledge_base import book_catalog_index as index
         index.clear_global_catalog_cache()
         index.save_catalog_to_db(thread_id=None, user_id=None, mtime_sig=1, entries=[_make_entry('g')])

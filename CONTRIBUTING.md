@@ -18,10 +18,15 @@ citation code must remain independent of a particular subject. Preserve the
 source document scope and exact citation registry entries when changing retrieval.
 Tests should cover domain isolation, source visibility, or evidence correctness.
 
-Run `make test` for the framework regression suite. Run additional affected
-backend tests as needed and `cd frontend && pnpm typecheck` for frontend edits.
-Run Ruff on changed Python files. The inherited backend suite includes legacy
-integration tests that may require optional provider/parser dependencies.
+Run `make test` for the full backend suite and `cd frontend && pnpm typecheck`
+for frontend edits. Run Ruff on changed Python files. Runtime workflow tests
+use local deterministic model/embedding fixtures, real HTTP routes and embedded
+Qdrant; no production credentials or OCR service are required.
+
+After changing backend dependencies, regenerate the Docker manifest from
+`backend/` with `uv export --frozen --no-dev --no-hashes --no-emit-project
+--no-header --format requirements-txt --output-file requirements.txt`.
+CI checks that it matches the lockfile.
 
 Do not commit `.env` files, `config.yaml`, runtime data, uploaded documents,
 or private deployment settings. Preserve upstream attribution and license

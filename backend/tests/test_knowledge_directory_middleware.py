@@ -1,42 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
-import sys
 from dataclasses import dataclass, replace
 from pathlib import Path
-from types import ModuleType
 from types import SimpleNamespace
 
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.community.knowledge_base.catalog import BookCatalogEntry
-
-if "langchain.agents" not in sys.modules:
-    langchain_agents = ModuleType("langchain.agents")
-
-    class _DummyAgentState(dict):
-        pass
-
-    langchain_agents.AgentState = _DummyAgentState
-    sys.modules["langchain.agents"] = langchain_agents
-
-if "langchain.agents.middleware" not in sys.modules:
-    langchain_agents_middleware = ModuleType("langchain.agents.middleware")
-
-    class _DummyAgentMiddleware:
-        def __class_getitem__(cls, _item):
-            return cls
-
-    langchain_agents_middleware.AgentMiddleware = _DummyAgentMiddleware
-    sys.modules["langchain.agents.middleware"] = langchain_agents_middleware
-
-if "langchain.agents.middleware.types" not in sys.modules:
-    langchain_agents_middleware_types = ModuleType("langchain.agents.middleware.types")
-    langchain_agents_middleware_types.ModelCallResult = object
-    langchain_agents_middleware_types.ModelRequest = object
-    langchain_agents_middleware_types.ModelResponse = object
-    sys.modules["langchain.agents.middleware.types"] = langchain_agents_middleware_types
 
 _MIDDLEWARE_SPEC = importlib.util.spec_from_file_location(
     "test_knowledge_directory_middleware_module",

@@ -146,6 +146,13 @@ The ingestion helper populates SQLite paragraphs/FTS from `.structured.json`;
 MinerU gRPC service and moves processed PDFs into `output/done`. Place OCR results
 in the knowledge corpus and ingest/index them separately. See the
 [functionality audit](docs/functionality-audit.md) for restored tooling and limits.
+UTF-8 Markdown/TXT uploads are parsed locally without OCR. Raw Markdown/TXT in
+`knowledge/docs`, including the quick-start examples, can be indexed with
+`make index-knowledge` and located directly for body evidence and citations.
+Files with ingestion records follow those records to avoid indexing both the raw
+source and its structured output. The Docker gateway and agent services share
+extensions configuration and a writable custom Skills volume.
+
 Full Docker startup, live-model answers, and external OCR still require validation
 in the target environment.
 
@@ -164,11 +171,14 @@ make test
 cd frontend && pnpm typecheck
 ```
 
-`make test` runs the framework regression suite: domain isolation, setup and
+`make test` runs the complete backend suite: domain isolation, setup and
 publication guards, bounded retrieval, source evidence, catalog routing,
 citation behavior, optional task-memory handling, and publication completeness.
-It is not the entire inherited suite or a live-service end-to-end acceptance test. Some inherited tests
-require additional provider/parser dependencies; see [CONTRIBUTING.md](CONTRIBUTING.md).
+Runtime tests exercise real gateway routes, local parsers, embedded Qdrant, body
+location, and synchronous/asynchronous agent execution with citation state.
+External chat and embedding services are replaced by deterministic local fixtures.
+This is not live-service end-to-end acceptance; see [CONTRIBUTING.md](CONTRIBUTING.md)
+and the [functionality audit](docs/functionality-audit.md).
 
 Use `python3 scripts/export_open_source.py --check` to inspect publication inputs.
 `make export` creates a new source-only snapshot in `release/hilo`, excluding

@@ -44,6 +44,14 @@ restarting backend processes. Request-level domain selection is future work.
 The quick-start configuration disables prior-task memory so first-time retrieval
 does not depend on a populated memory collection.
 
+UTF-8 Markdown/TXT uploads use the local text parser in all three knowledge scopes;
+they do not require MinerU. Raw text files in the global docs root can also be
+indexed and located without ingestion sidecars. Index rebuilds honor existing
+ingestion records and exclude duplicate raw sources and records without an
+indexable target. Structured payload JSON is not an ingestion record.
+Thread and user locators read their scoped structured files rather than probing
+the global SQLite corpus with a potentially colliding document identifier.
+
 ## Execution paths
 
 Ordinary knowledge questions use direct bounded retrieval and non-thinking model
@@ -62,6 +70,13 @@ paths and persisted legacy data paths are retained for compatibility.
 published, on localhost. Qdrant, auth database, runtime data, and LangGraph
 checkpoints use named volumes. Public production API authorization is not provided
 by this template; review SECURITY.md before exposing services.
+
+Both backend services bind the same `extensions_config.json` and share a writable
+`custom-skills` volume under the read-only Skills tree. MCP tool loading checks
+the shared configuration for changes. Docker's `backend/requirements.txt` is
+exported from the frozen `uv.lock`; CI rejects dependency manifest drift.
+Agent exports load the lead-agent factory lazily so a fresh process can import
+the subagent executor without a circular import through the middleware chain.
 
 ## Source publication and supporting tools
 

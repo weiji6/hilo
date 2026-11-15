@@ -1,5 +1,5 @@
 agent-sandbox==0.0.19
-    # via deer-flow
+    # via hilo-framework
 aiofiles==25.1.0
     # via unstructured-client
 aiohappyeyeballs==2.6.1
@@ -23,8 +23,11 @@ annotated-doc==0.0.4
     #   typer
 annotated-types==0.7.0
     # via pydantic
+anthropic==0.97.0
+    # via langchain-anthropic
 anyio==4.12.1
     # via
+    #   anthropic
     #   httpx
     #   mcp
     #   openai
@@ -131,21 +134,25 @@ cymem==2.0.13
     #   spacy
     #   thinc
 dashscope==1.25.12
-    # via deer-flow
+    # via hilo-framework
 dataclasses-json==0.6.7
     # via langchain-community
 ddgs==9.10.0
-    # via deer-flow
+    # via hilo-framework
 defusedxml==0.7.1
     # via
     #   markitdown
     #   youtube-transcript-api
 distro==1.9.0
-    # via openai
+    # via
+    #   anthropic
+    #   openai
+docstring-parser==0.18.0
+    # via anthropic
 dotenv==0.9.9
-    # via deer-flow
+    # via hilo-framework
 duckdb==1.4.4
-    # via deer-flow
+    # via hilo-framework
 durationpy==0.10
     # via kubernetes
 emoji==2.15.0
@@ -155,13 +162,13 @@ et-xmlfile==2.0.0
 fake-useragent==2.2.0
     # via ddgs
 fastapi==0.128.0
-    # via deer-flow
+    # via hilo-framework
 filelock==3.25.0
     # via unstructured
 filetype==1.2.0
     # via unstructured
 firecrawl-py==4.13.4
-    # via deer-flow
+    # via hilo-framework
 flatbuffers==25.12.19
     # via onnxruntime
 forbiddenfruit==0.1.4 ; implementation_name == 'cpython'
@@ -176,9 +183,9 @@ greenlet==3.3.2 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or 
     # via sqlalchemy
 grpcio==1.76.0
     # via
-    #   deer-flow
     #   grpcio-health-checking
     #   grpcio-tools
+    #   hilo-framework
     #   langgraph-api
     #   qdrant-client
 grpcio-health-checking==1.76.0
@@ -206,9 +213,10 @@ httptools==0.7.1
 httpx==0.28.1
     # via
     #   agent-sandbox
+    #   anthropic
     #   ddgs
-    #   deer-flow
     #   firecrawl-py
+    #   hilo-framework
     #   langgraph-api
     #   langgraph-sdk
     #   langsmith
@@ -241,7 +249,9 @@ isodate==0.7.2
 jinja2==3.1.6
     # via spacy
 jiter==0.12.0
-    # via openai
+    # via
+    #   anthropic
+    #   openai
 jmespath==0.10.0
     # via aliyun-python-sdk-core
 jsonpatch==1.33
@@ -255,16 +265,19 @@ jsonschema-rs==0.29.1
 jsonschema-specifications==2025.9.1
     # via jsonschema
 kubernetes==35.0.0
-    # via deer-flow
+    # via hilo-framework
 langchain==1.2.3
-    # via deer-flow
+    # via hilo-framework
+langchain-anthropic==1.2.0
+    # via hilo-framework
 langchain-classic==1.0.1
     # via langchain-community
 langchain-community==0.4.1
-    # via deer-flow
-langchain-core==1.2.16
+    # via hilo-framework
+langchain-core==1.3.2
     # via
     #   langchain
+    #   langchain-anthropic
     #   langchain-classic
     #   langchain-community
     #   langchain-deepseek
@@ -277,24 +290,26 @@ langchain-core==1.2.16
     #   langgraph-checkpoint
     #   langgraph-prebuilt
 langchain-deepseek==1.0.1
-    # via deer-flow
+    # via hilo-framework
 langchain-mcp-adapters==0.2.1
-    # via deer-flow
+    # via hilo-framework
 langchain-openai==1.1.7
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langchain-deepseek
+langchain-protocol==0.0.14
+    # via langchain-core
 langchain-qdrant==1.1.0
-    # via deer-flow
+    # via hilo-framework
 langchain-text-splitters==1.1.1
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langchain-classic
 langdetect==1.0.9
     # via unstructured
 langgraph==1.0.6
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langchain
     #   langgraph-api
     #   langgraph-runtime-inmem
@@ -307,7 +322,7 @@ langgraph-checkpoint==4.0.0
     #   langgraph-prebuilt
     #   langgraph-runtime-inmem
 langgraph-cli==0.4.11
-    # via deer-flow
+    # via hilo-framework
 langgraph-prebuilt==1.0.6
     # via langgraph
 langgraph-runtime-inmem==0.22.0
@@ -344,10 +359,10 @@ markdown-it-py==4.0.0
     # via rich
 markdownify==1.2.2
     # via
-    #   deer-flow
+    #   hilo-framework
     #   markitdown
 markitdown==0.1.5b1
-    # via deer-flow
+    # via hilo-framework
 markupsafe==3.0.3
     # via jinja2
 marshmallow==3.26.2
@@ -437,7 +452,7 @@ orjson==3.11.5
 ormsgpack==1.12.1
     # via langgraph-checkpoint
 oss2==2.19.1
-    # via deer-flow
+    # via hilo-framework
 packaging==25.0
     # via
     #   langchain-core
@@ -489,11 +504,13 @@ pycryptodome==3.23.0
 pydantic==2.12.5
     # via
     #   agent-sandbox
+    #   anthropic
     #   confection
-    #   deer-flow
     #   fastapi
     #   firecrawl-py
+    #   hilo-framework
     #   langchain
+    #   langchain-anthropic
     #   langchain-classic
     #   langchain-core
     #   langchain-qdrant
@@ -524,7 +541,7 @@ pyjwt==2.10.1
     #   mcp
     #   msal
 pymupdf==1.27.2
-    # via deer-flow
+    # via hilo-framework
 pypdf==6.7.5
     # via unstructured-client
 pypdfium2==5.3.0
@@ -552,7 +569,7 @@ python-magic==0.4.27
     # via unstructured
 python-multipart==0.0.22
     # via
-    #   deer-flow
+    #   hilo-framework
     #   mcp
 python-oxmsg==0.0.2
     # via unstructured
@@ -564,7 +581,7 @@ pywin32==311 ; sys_platform == 'win32'
     #   portalocker
 pyyaml==6.0.3
     # via
-    #   deer-flow
+    #   hilo-framework
     #   kubernetes
     #   langchain-classic
     #   langchain-community
@@ -572,12 +589,12 @@ pyyaml==6.0.3
     #   uvicorn
 qdrant-client==1.17.0
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langchain-qdrant
 rapidfuzz==3.14.3
     # via unstructured
 readabilipy==0.3.0
-    # via deer-flow
+    # via hilo-framework
 referencing==0.37.0
     # via
     #   jsonschema
@@ -591,8 +608,8 @@ requests==2.32.5
     # via
     #   azure-core
     #   dashscope
-    #   deer-flow
     #   firecrawl-py
+    #   hilo-framework
     #   kubernetes
     #   langchain-classic
     #   langchain-community
@@ -640,7 +657,9 @@ six==1.17.0
 smart-open==7.5.1
     # via weasel
 sniffio==1.3.1
-    # via openai
+    # via
+    #   anthropic
+    #   openai
 socksio==1.0.0
     # via httpx
 soupsieve==2.8.1
@@ -665,7 +684,7 @@ srsly==2.5.2
     #   weasel
 sse-starlette==2.1.3
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langgraph-api
     #   langgraph-runtime-inmem
     #   mcp
@@ -687,7 +706,7 @@ structlog==25.5.0
 sympy==1.14.0
     # via onnxruntime
 tavily-python==0.7.17
-    # via deer-flow
+    # via hilo-framework
 tenacity==9.1.2
     # via
     #   langchain-community
@@ -697,7 +716,7 @@ thinc==8.3.10
     # via spacy
 tiktoken==0.12.0
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langchain-openai
     #   tavily-python
 tqdm==4.67.3
@@ -716,6 +735,7 @@ typer-slim==0.24.0
 typing-extensions==4.15.0
     # via
     #   aiosignal
+    #   anthropic
     #   anyio
     #   azure-ai-documentintelligence
     #   azure-core
@@ -725,6 +745,7 @@ typing-extensions==4.15.0
     #   grpcio
     #   langchain-core
     #   langchain-mcp-adapters
+    #   langchain-protocol
     #   mcp
     #   openai
     #   opentelemetry-api
@@ -752,7 +773,7 @@ typing-inspection==0.4.2
 tzdata==2025.3 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 unstructured==0.21.5
-    # via deer-flow
+    # via hilo-framework
 unstructured-client==0.42.10
     # via unstructured
 urllib3==2.6.3
@@ -768,7 +789,7 @@ uuid-utils==0.13.0
     #   langsmith
 uvicorn==0.40.0
     # via
-    #   deer-flow
+    #   hilo-framework
     #   langgraph-api
     #   mcp
     #   sse-starlette
@@ -777,7 +798,7 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
 volcengine-python-sdk==5.0.5
     # via
     #   agent-sandbox
-    #   deer-flow
+    #   hilo-framework
 wasabi==1.1.3
     # via
     #   spacy

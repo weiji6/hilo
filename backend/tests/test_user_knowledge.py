@@ -1,101 +1,10 @@
 import importlib.util
-import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from langchain_core.documents import Document
-
-if "qdrant_client" not in sys.modules:
-    qdrant_client = ModuleType("qdrant_client")
-    qdrant_models = ModuleType("qdrant_client.models")
-    qdrant_http = ModuleType("qdrant_client.http")
-    qdrant_http_exceptions = ModuleType("qdrant_client.http.exceptions")
-
-    class _DummyQdrantClient:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def delete_collection(self, *args, **kwargs) -> None:
-            return None
-
-    class _DummyDistance:  # pragma: no cover - test import shim
-        COSINE = "cosine"
-
-    class _DummyVectorParams:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyFilter:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyFieldCondition:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyMatchAny:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            self.args = args
-            self.kwargs = kwargs
-
-    class _DummyResponseHandlingException(Exception):  # pragma: no cover - test import shim
-        pass
-
-    qdrant_client.QdrantClient = _DummyQdrantClient
-    qdrant_client.models = qdrant_models
-    qdrant_models.Distance = _DummyDistance
-    qdrant_models.VectorParams = _DummyVectorParams
-    qdrant_models.Filter = _DummyFilter
-    qdrant_models.FieldCondition = _DummyFieldCondition
-    qdrant_models.MatchAny = _DummyMatchAny
-    qdrant_http_exceptions.ResponseHandlingException = _DummyResponseHandlingException
-    sys.modules["qdrant_client"] = qdrant_client
-    sys.modules["qdrant_client.models"] = qdrant_models
-    sys.modules["qdrant_client.http"] = qdrant_http
-    sys.modules["qdrant_client.http.exceptions"] = qdrant_http_exceptions
-
-if "langchain_qdrant" not in sys.modules:
-    langchain_qdrant = ModuleType("langchain_qdrant")
-
-    class _DummyQdrantVectorStore:  # pragma: no cover - test import shim
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def add_documents(self, *args, **kwargs):
-            return None
-
-        def similarity_search_with_score(self, *args, **kwargs):
-            return []
-
-    langchain_qdrant.QdrantVectorStore = _DummyQdrantVectorStore
-    sys.modules["langchain_qdrant"] = langchain_qdrant
-
-if "src.reflection" not in sys.modules:
-    reflection = ModuleType("src.reflection")
-
-    def _resolve_variable(value):  # pragma: no cover - test import shim
-        return value
-
-    def _resolve_class(value):  # pragma: no cover - test import shim
-        return value
-
-    reflection.resolve_variable = _resolve_variable
-    reflection.resolve_class = _resolve_class
-    sys.modules["src.reflection"] = reflection
-
-if "src.community.knowledge_base.translation_grpc" not in sys.modules:
-    translation_grpc = ModuleType("src.community.knowledge_base.translation_grpc")
-
-    def _translate_blocks_to_chinese_via_grpc(blocks):  # pragma: no cover - test import shim
-        return [{"id": block["id"], "translation": block["text"]} for block in blocks]
-
-    translation_grpc.translate_blocks_to_chinese_via_grpc = _translate_blocks_to_chinese_via_grpc
-    sys.modules["src.community.knowledge_base.translation_grpc"] = translation_grpc
 
 import src.community.knowledge_base.indexer as indexer_module
 import src.community.knowledge_base.lexical_search as lexical_search_module

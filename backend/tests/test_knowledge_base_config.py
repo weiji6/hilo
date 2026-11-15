@@ -5,8 +5,8 @@ from src.config.knowledge_base_config import (
     KnowledgeBaseConfig,
     MineruConfig,
     TranslationRpcConfig,
-    load_knowledge_base_config_from_dict,
     get_knowledge_base_config,
+    load_knowledge_base_config_from_dict,
 )
 
 
@@ -27,8 +27,8 @@ class TestMineruConfig:
     def test_mineru_request_timeout_default_supports_long_jobs(self):
         cfg = MineruConfig()
         assert cfg.request_timeout == 14400
-        assert cfg.keepalive_time_ms == 180000
-        assert cfg.keepalive_timeout_ms == 180000
+        assert cfg.keepalive_time_ms == 20000
+        assert cfg.keepalive_timeout_ms == 20000
         assert cfg.keepalive_permit_without_calls is True
         assert cfg.max_message_bytes == 512 * 1024 * 1024
         assert cfg.enable_pdf_chunking is True

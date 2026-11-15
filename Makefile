@@ -28,7 +28,7 @@ index-knowledge:
 	$(COMPOSE) exec gateway python -m src.community.knowledge_base.indexer
 
 test:
-	cd backend && uv run pytest tests/test_domain_profiles.py tests/test_framework_bootstrap.py tests/test_overview_retrieval.py tests/test_source_evidence.py tests/test_knowledge_citations.py tests/test_catalog_routing.py tests/test_task_memory_disabled.py tests/test_publication_integrity.py tests/test_docker_sandbox_mode_detection.py tests/test_provisioner_kubeconfig.py tests/test_tool_availability.py -q
+	cd backend && uv run pytest tests -q
 
 export:
 	$(PYTHON) scripts/export_open_source.py --output release/hilo

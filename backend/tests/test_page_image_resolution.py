@@ -2,15 +2,17 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from starlette.requests import Request
+
 from src.community.knowledge_base.locator import LocatedDocument
 from src.gateway.routers import knowledge as knowledge_router
 from src.gateway.routers import user_knowledge as user_knowledge_router
 
 
 class _FakePixmap:
-    def tobytes(self, fmt: str) -> bytes:
-        assert fmt == "png"
-        return b"png-bytes"
+    def tobytes(self, fmt: str, **kwargs) -> bytes:
+        assert fmt == "jpeg"
+        return b"jpeg-bytes"
 
 
 class _FakePage:
@@ -65,10 +67,11 @@ def test_global_page_image_uses_resolved_filename(monkeypatch, tmp_path: Path) -
     response = knowledge_router.get_knowledge_document_page_image(
         filename="光绪朝上讠档第一七册（光绪一七年）.pdf",
         pdf_page_no=5,
+        request=Request({"type": "http", "headers": []}),
         dpi=144,
     )
 
-    assert response.body == b"png-bytes"
+    assert response.body == b"jpeg-bytes"
 
 
 def test_user_page_image_uses_resolved_filename(monkeypatch, tmp_path: Path) -> None:
@@ -95,7 +98,8 @@ def test_user_page_image_uses_resolved_filename(monkeypatch, tmp_path: Path) -> 
         user_id="user-1",
         filename="光续朝东 华录.pdf",
         pdf_page_no=5,
+        request=Request({"type": "http", "headers": []}),
         dpi=144,
     )
 
-    assert response.body == b"png-bytes"
+    assert response.body == b"jpeg-bytes"

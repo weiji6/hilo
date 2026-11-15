@@ -35,7 +35,7 @@ from src.community.knowledge_base.citations import (
     resolve_result_citation_context,
 )
 from src.community.knowledge_base.common import derive_global_doc_id, resolve_project_path
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS
+from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
 from src.community.knowledge_base.folder_registry import (
     delete_folder_path,
     ensure_folder_path,
@@ -95,7 +95,6 @@ def _get_disk_io_semaphore() -> threading.Semaphore:
     global _disk_io_semaphore
     with _disk_io_semaphore_lock:
         if _disk_io_semaphore is None:
-            workers = _resolve_ocr_max_workers()
             slots = 2
             _disk_io_semaphore = threading.Semaphore(slots)
     return _disk_io_semaphore
@@ -151,7 +150,6 @@ def _resolve_ocr_max_workers() -> int:
 def _ensure_global_queue_workers_started() -> None:
     """Lazily create the OCR executor and recover any pending records."""
     global _global_ocr_executor, _global_ocr_executor_workers
-    started = False
     with _global_inflight_lock:
         if _global_ocr_executor is None:
             _global_ocr_executor_workers = _resolve_ocr_max_workers()
@@ -159,7 +157,6 @@ def _ensure_global_queue_workers_started() -> None:
                 max_workers=_global_ocr_executor_workers,
                 thread_name_prefix="global-ocr",
             )
-            started = True
     # Recovery disabled: OCR is run locally via scripts/local_ocr.py.
     # Pending records are left in their current status; use the UI retry
     # button or re-upload to reprocess individual files.
@@ -1007,7 +1004,7 @@ def _process_single_global_ocr(filename: str) -> None:
         file_ext = file_path.suffix.lower()
         if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in INDEXABLE_EXTENSIONS:
             hints = record.get("hints") or {}
-            record["parse_method"] = "ocr_pdf_mineru_grpc"
+            record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
             _save_global_record(filename, record)
 
             disk_sem = _get_disk_io_semaphore()
@@ -1018,16 +1015,19 @@ def _process_single_global_ocr(filename: str) -> None:
                 logger.info("[ocr-step] %s STEP 3b: reading file from disk (%s bytes)", filename, file_path.stat().st_size)
                 file_content = file_path.read_bytes()
 
-            # Phase 2: remote OCR via gRPC (ungated — disk is free while we wait)
-            logger.info("[ocr-step] %s STEP 3c: calling MinerU gRPC (file_ext=%s)", filename, file_ext)
-            structured_payload = build_structured_document_from_mineru_grpc(
-                file_path,
-                title=record["display_title"],
-                parser_name=record["parse_method"],
-                hints=hints,
-                language_hint=hints.get("language_hint"),
-                file_content=file_content,
-            )
+            # Phase 2: local text parsing or remote OCR (outside the I/O gate).
+            logger.info("[parse-step] %s STEP 3c: parser=%s (file_ext=%s)", filename, record["parse_method"], file_ext)
+            if file_ext in {".md", ".txt"}:
+                structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
+            else:
+                structured_payload = build_structured_document_from_mineru_grpc(
+                    file_path,
+                    title=record["display_title"],
+                    parser_name=record["parse_method"],
+                    hints=hints,
+                    language_hint=hints.get("language_hint"),
+                    file_content=file_content,
+                )
             del file_content  # release memory before acquiring disk semaphore again
 
             # Phase 3: write structured JSON to disk (gated — limits concurrent writes)
@@ -1105,15 +1105,18 @@ def _process_global_knowledge_uploads(filenames: list[str]) -> None:
                 file_ext = file_path.suffix.lower()
                 if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in INDEXABLE_EXTENSIONS:
                     hints = record.get("hints") or {}
-                    record["parse_method"] = "ocr_pdf_mineru_grpc"
+                    record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
                     _save_global_record(safe_filename, record)
-                    structured_payload = build_structured_document_from_mineru_grpc(
-                        file_path,
-                        title=record["display_title"],
-                        parser_name=record["parse_method"],
-                        hints=hints,
-                        language_hint=hints.get("language_hint"),
-                    )
+                    if file_ext in {".md", ".txt"}:
+                        structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
+                    else:
+                        structured_payload = build_structured_document_from_mineru_grpc(
+                            file_path,
+                            title=record["display_title"],
+                            parser_name=record["parse_method"],
+                            hints=hints,
+                            language_hint=hints.get("language_hint"),
+                        )
                     structured_path = save_structured_document(
                         ingestion_dir,
                         safe_filename,
@@ -1273,7 +1276,7 @@ async def upload_global_knowledge_files(
         files=uploaded_files,
         message=(
             f"Successfully uploaded {len(uploaded_files)} file(s); "
-            "files are queued for OCR parsing in the background"
+            "files are queued for parsing in the background"
         ),
     )
     
@@ -1923,8 +1926,9 @@ def _run_folder_reorganize(
             "请输出整理方案（JSON 数组）："
         )
 
-        from src.models import create_chat_model  # noqa: PLC0415
         from langchain_core.messages import HumanMessage, SystemMessage  # noqa: PLC0415
+
+        from src.models import create_chat_model  # noqa: PLC0415
 
         model = create_chat_model(name=model_name, thinking_enabled=False)
         response = model.invoke([
@@ -2764,6 +2768,10 @@ def get_knowledge_document_page_image(
 
     docs_root = get_global_docs_dir()
     file_path = docs_root / filename
+    if not file_path.is_file():
+        document_record = locate_document(thread_id=None, filename=filename)
+        if document_record is not None:
+            file_path = docs_root / document_record.filename
     try:
         file_path = file_path.resolve()
         docs_root_resolved = docs_root.resolve()
