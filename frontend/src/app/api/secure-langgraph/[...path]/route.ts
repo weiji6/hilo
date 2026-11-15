@@ -45,6 +45,29 @@ function getMetadataRecord(body?: Record<string, unknown>) {
     : {};
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function bindRunIdentity(
+  body: Record<string, unknown> | undefined,
+  userId: string,
+  threadId: string,
+) {
+  const config = asRecord(body?.config);
+  const identity = { user_id: userId, thread_id: threadId };
+  return {
+    ...body,
+    context: { ...asRecord(body?.context), ...identity },
+    config: {
+      ...config,
+      configurable: { ...asRecord(config.configurable), ...identity },
+    },
+  };
+}
+
 function getOwnershipCacheTtlMs() {
   const rawValue = process.env.SECURE_LANGGRAPH_OWNERSHIP_CACHE_TTL_MS;
   if (!rawValue) {
@@ -361,6 +384,11 @@ async function proxyToLangGraph(request: NextRequest, path: string[]) {
     const parseElapsedMs = nowMs() - parseStartedAt;
     let nextJsonBody = jsonBody as Record<string, unknown> | undefined;
 
+    // Stateless/batch runs have no owned thread to bind the retrieval scope to.
+    if (session && path[0] === "runs") {
+      return jsonResponse({ message: "Use thread-scoped runs" }, 400);
+    }
+
     if (session && path[0] === "threads" && request.method === "POST") {
       if (path.length === 1) {
         nextJsonBody = {
@@ -397,6 +425,10 @@ async function proxyToLangGraph(request: NextRequest, path: string[]) {
           total_ms: nowMs() - startedAt,
         });
         return ownershipResponse;
+      }
+
+      if (request.method === "POST" && path[2] === "runs") {
+        nextJsonBody = bindRunIdentity(nextJsonBody, session.user.id, path[1]!);
       }
 
       if (

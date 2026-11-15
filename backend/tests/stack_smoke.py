@@ -8,6 +8,7 @@ import argparse
 import http.cookiejar
 import io
 import json
+import os
 import secrets
 import time
 import urllib.error
@@ -148,11 +149,24 @@ def verify(base_url):
     assert state["values"]["knowledge_citation_registry"]
     print("PASS real HTTP SSE: catalog → body → answer → persisted citation", flush=True)
     print("Hilo full-stack acceptance passed (deterministic HTTP model fixtures).", flush=True)
+    return {"email": email, "password": password, "user_id": user_id, "thread_id": thread_id}
+
+
+def save_state(path, state):
+    # Synthetic test credentials only; never put this file in the source tree/logs.
+    with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as stream:
+        json.dump(state, stream)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:2026")
     parser.add_argument("--prepare", action="store_true")
+    parser.add_argument("--state-file", type=Path, help="Save synthetic account IDs for lifecycle acceptance")
     args = parser.parse_args()
-    (prepare if args.prepare else verify)(args.base_url.rstrip("/"))
+    if args.prepare:
+        prepare(args.base_url.rstrip("/"))
+    else:
+        state = verify(args.base_url.rstrip("/"))
+        if args.state_file:
+            save_state(args.state_file, state)

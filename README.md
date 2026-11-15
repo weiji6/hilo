@@ -153,6 +153,7 @@ cd frontend && pnpm typecheck
 `make test` 运行全部后端测试，覆盖领域隔离、初始化与导出约束、检索预算、正文证据、
 目录路由、引用、可选任务记忆及发布完整性。运行链路测试使用真实网关、解析器与嵌入式 Qdrant，
 并用本地模型替身验证同步/异步 Agent 执行与引用状态传递。它不等于真实服务端到端验收。
+当前后端测试为 473 项；整栈验收还覆盖认证代理的线程/用户资料隔离、资料生命周期和优雅重启后的数据保留。
 详见 [CONTRIBUTING.md](CONTRIBUTING.md) 与[功能核对记录](docs/functionality-audit.md)。
 
 运行 `python3 scripts/export_open_source.py --check` 检查发布输入。

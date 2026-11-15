@@ -2196,6 +2196,8 @@ async def delete_global_knowledge_file(filename: str) -> dict:
             "success": True,
             "message": f"Deleted {filename} from global knowledge base and updated the index",
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to delete {filename}: {exc}")
     finally:

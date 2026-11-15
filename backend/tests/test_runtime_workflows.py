@@ -282,3 +282,53 @@ def test_agent_stream_routes_reads_and_cites_real_sources(runtime_environment, m
     assert f"[citation:{registry[0]['id']}]" in messages[-1].content
     assert registry[0]["url"].startswith("/api/knowledge/docs/retry-policy.md?")
     assert "无法回答" not in messages[-1].content
+
+
+def test_personal_replacement_and_deletion_keep_vectors_and_scopes_consistent(runtime_environment):
+    from src.community.knowledge_base.locator import locate_document
+    from src.gateway.app import create_app
+
+    with TestClient(create_app()) as client:
+        for user, marker in (("owner-a", "OWNER_A_OLD"), ("owner-b", "OWNER_B_ONLY")):
+            response = client.post(f"/api/users/{user}/knowledge/upload", files={"files": ("same.txt", (marker + " synthetic source details. ").encode() * 10, "text/plain")})
+            assert response.status_code == 200, response.text
+        old = client.get("/api/users/owner-a/knowledge/list").json()["records"][0]
+        client.post("/api/users/owner-a/knowledge/upload", files={"files": ("same.txt", b"OWNER_A_NEW synthetic source details. " * 10, "text/plain")})
+        current = client.get("/api/users/owner-a/knowledge/list").json()
+        assert current["count"] == current["indexed_count"] == 1
+        assert current["records"][0]["id"] != old["id"]
+        points, _ = runtime_environment.vector.scroll("hilo_knowledge__user__owner-a", limit=100, with_payload=True)
+        body = "\n".join(point.payload["page_content"] for point in points)
+        assert "OWNER_A_NEW" in body and "OWNER_A_OLD" not in body and "OWNER_B_ONLY" not in body
+        document = locate_document(None, user_id="owner-a", filename="same.txt")
+        assert "OWNER_A_NEW" in document.payload["pages"][0]["text"]
+        response = client.delete(f"/api/users/owner-a/knowledge/{current['records'][0]['id']}")
+        assert response.status_code == 200, response.text
+        assert client.get("/api/users/owner-a/knowledge/list").json()["doc_count"] == 0
+        assert runtime_environment.vector.get_collection("hilo_knowledge__user__owner-a").points_count == 0
+        assert client.get("/api/users/owner-a/knowledge/docs/same.txt").status_code == 404
+        assert "OWNER_B_ONLY" in locate_document(None, user_id="owner-b", filename="same.txt").payload["pages"][0]["text"]
+
+
+def test_failed_text_parse_recovers_on_valid_replacement(runtime_environment):
+    from src.gateway.app import create_app
+
+    with TestClient(create_app()) as client:
+        client.post("/api/users/recovery/knowledge/upload", files={"files": ("recovery.txt", b"\xff\xfeinvalid UTF-8", "text/plain")})
+        failed = client.get("/api/users/recovery/knowledge/list").json()
+        assert failed["records"][0]["parse_status"] == "failed"
+        assert failed["records"][0]["error"]
+        assert failed["doc_count"] == 0
+        client.post("/api/users/recovery/knowledge/upload", files={"files": ("recovery.txt", b"RECOVERED synthetic source with valid Unicode text. " * 8, "text/plain")})
+        recovered = client.get("/api/users/recovery/knowledge/list").json()
+        assert recovered["count"] == recovered["indexed_count"] == 1
+        assert recovered["doc_count"] > 0
+        assert not recovered["records"][0]["error"]
+
+
+def test_deleting_absent_global_document_returns_not_found(runtime_environment):
+    from src.gateway.app import create_app
+
+    with TestClient(create_app()) as client:
+        response = client.delete("/api/knowledge/uploads/absent-synthetic.txt")
+        assert response.status_code == 404, response.text

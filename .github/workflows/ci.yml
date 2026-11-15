@@ -56,7 +56,15 @@ jobs:
         run: |
           docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T gateway python -m src.community.knowledge_base.indexer
       - name: Full-stack HTTP acceptance
-        run: python3 backend/tests/stack_smoke.py
+        run: python3 backend/tests/stack_smoke.py --state-file /tmp/hilo-smoke-state.json
+      - name: Lifecycle and scope acceptance
+        run: python3 backend/tests/stack_lifecycle.py --phase before --state-file /tmp/hilo-smoke-state.json
+      - name: Recreate containers while retaining data volumes
+        run: |
+          docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down
+          docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml up -d
+      - name: Persistent data after restart
+        run: python3 backend/tests/stack_lifecycle.py --phase after --state-file /tmp/hilo-smoke-state.json
       - name: Installed Skills visible to agent process
         run: |
           docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T langgraph python -c "from src.skills import load_skills; assert any(s.name == 'hilo-smoke' for s in load_skills())"
@@ -65,4 +73,6 @@ jobs:
         run: docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml logs --tail=120
       - name: Remove disposable stack
         if: always()
-        run: docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down -v
+        run: |
+          docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down -v
+          rm -f /tmp/hilo-smoke-state.json

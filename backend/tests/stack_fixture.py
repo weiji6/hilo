@@ -33,10 +33,29 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         messages = request["messages"]
-        results = [m for m in messages if m.get("role") == "tool"]
+        user_index = next((i for i in range(len(messages) - 1, -1, -1) if messages[i].get("role") == "user"), 0)
+        latest_user = str(messages[user_index].get("content", ""))
+        results = [m for m in messages[user_index:] if m.get("role") == "tool"]
         suggestion = "第 3 阶段" in str(messages[0].get("content", ""))
+        if "HILO_PROVIDER_FAILURE" in latest_user:
+            self.reply({"error": {"message": "Synthetic provider outage", "type": "server_error"}}, status=503)
+            return
         if suggestion:
             message = {"role": "assistant", "content": "Which errors are retryable?\nWhat delays apply?\nHow many retries follow the first attempt?"}
+        elif "HILO_MISSING_EVIDENCE" in latest_user:
+            if not results:
+                message = self.tool("missing", "knowledge_locate", {"doc_id": "hilo-deliberately-absent.md", "queries": ["NONEXISTENT_SENTINEL"]})
+            else:
+                message = {"role": "assistant", "content": "The nonexistent source supposedly confirms an invented policy with exactly ninety-nine attempts. This claim has no supporting body evidence at all. [citation:999]"}
+        elif "HILO_SCOPE_CHECK" in latest_user:
+            if not results:
+                doc_id = re.search(r"DOC_ID=(\S+)", latest_user).group(1)
+                message = self.tool("scope", "knowledge_locate", {"doc_id": doc_id, "pdf_page_no": 1})
+            else:
+                body = "\n".join(str(m.get("content", "")) for m in results)
+                marker = re.search(r"\[citation:\d+\]", body)
+                owners = re.findall(r"OWNER_[AB]_(?:OLD|NEW|ONLY)", body)
+                message = {"role": "assistant", "content": f"The source contains {' '.join(sorted(set(owners)))}. {marker.group()}" if marker and owners else "【无法回答】No visible body evidence."}
         elif not results and request.get("tools"):
             message = self.tool("route", "book_search", {"query": "retry policy", "knowledge_folders": ["未分类"]})
         elif results and "knowledge_locate" not in str(messages):
@@ -74,8 +93,8 @@ class Handler(BaseHTTPRequestHandler):
     def tool(self, call_id, name, args):
         return {"role": "assistant", "content": "", "tool_calls": [{"id": call_id, "type": "function", "function": {"name": name, "arguments": json.dumps(args)}}]}
 
-    def reply(self, payload):
-        self.send_response(200)
+    def reply(self, payload, status=200):
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(payload).encode())

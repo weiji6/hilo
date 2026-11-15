@@ -41,12 +41,20 @@ python3 backend/tests/stack_smoke.py --prepare
 docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml up --build -d
 docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T gateway python -m src.community.knowledge_base.indexer
 python3 backend/tests/stack_smoke.py
+python3 backend/tests/stack_lifecycle.py --phase before --state-file /tmp/hilo-smoke-state.json
+docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down
+docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml up -d
+python3 backend/tests/stack_lifecycle.py --phase after --state-file /tmp/hilo-smoke-state.json
 docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down -v
+rm -f /tmp/hilo-smoke-state.json
 ```
 
 The preparation step replaces the disposable checkout's provider settings with
 fixture endpoints. The verifier creates synthetic accounts and documents; never
-run it against an existing deployment. Default Docker builds use official
+run it against an existing deployment. The lifecycle verifier checks scope
+binding, missing-evidence refusal, provider recovery, and retention across a
+graceful container recreation. Its state file contains synthetic credentials and
+must stay outside the repository. Default Docker builds use official
 Debian, PyPI and npm registries; `PIP_INDEX_URL` and `NPM_REGISTRY` build arguments
 can select alternative package mirrors.
 
