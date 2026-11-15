@@ -220,6 +220,8 @@ def test_compose_shares_extensions_and_writable_custom_skills():
         assert service["environment"]["HILO_EXTENSIONS_CONFIG_PATH"] == "/app/extensions_config.json"
         assert "../extensions_config.json:/app/extensions_config.json" in service["volumes"]
         assert "custom-skills:/app/skills/custom" in service["volumes"]
+        assert "../skills/public:/app/skills/public:ro" in service["volumes"]
+        assert "../skills:/app/skills:ro" not in service["volumes"]
 
 
 @pytest.mark.parametrize("async_stream", [False, True])

@@ -72,7 +72,7 @@ checkpoints use named volumes. Public production API authorization is not provid
 by this template; review SECURITY.md before exposing services.
 
 Both backend services bind the same `extensions_config.json` and share a writable
-`custom-skills` volume under the read-only Skills tree. MCP tool loading checks
+`custom-skills` volume alongside the read-only public Skills mount. MCP tool loading checks
 the shared configuration for changes. Docker's `backend/requirements.txt` is
 exported from the frozen `uv.lock`; CI rejects dependency manifest drift.
 Docker builds use official package registries by default, with configurable
