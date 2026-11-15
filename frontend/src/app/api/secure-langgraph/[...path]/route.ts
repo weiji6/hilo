@@ -59,12 +59,10 @@ function bindRunIdentity(
   const config = asRecord(body?.config);
   const configurable = asRecord(config.configurable);
   const boundConfigurable = { ...configurable };
-  if (Object.hasOwn(configurable, "user_id")) {
-    boundConfigurable.user_id = userId;
-  }
-  if (Object.hasOwn(configurable, "thread_id")) {
-    boundConfigurable.thread_id = threadId;
-  }
+  // LangGraph's configurable schema is for model/runtime options. Identity
+  // belongs to context, so discard client-supplied identity keys there.
+  delete boundConfigurable.user_id;
+  delete boundConfigurable.thread_id;
   return {
     ...body,
     context: { ...asRecord(body?.context), user_id: userId, thread_id: threadId },
