@@ -28,6 +28,28 @@ After changing backend dependencies, regenerate the Docker manifest from
 --no-header --format requirements-txt --output-file requirements.txt`.
 CI checks that it matches the lockfile.
 
+The `stack` CI job builds and starts all Docker services in a fresh checkout,
+using `docker/compose.smoke.yaml` and deterministic OpenAI-compatible HTTP
+fixtures. It checks MariaDB authentication, uploads, Qdrant indexing, custom
+Skills and the authenticated LangGraph SSE proxy. It does not assess model
+quality. To reproduce, use a **disposable checkout** with no existing local
+configuration and a free localhost port 2026:
+
+```bash
+python3 scripts/init_config.py --example technical-docs
+python3 backend/tests/stack_smoke.py --prepare
+docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml up --build -d
+docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T gateway python -m src.community.knowledge_base.indexer
+python3 backend/tests/stack_smoke.py
+docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down -v
+```
+
+The preparation step replaces the disposable checkout's provider settings with
+fixture endpoints. The verifier creates synthetic accounts and documents; never
+run it against an existing deployment. Default Docker builds use official
+Debian, PyPI and npm registries; `PIP_INDEX_URL` and `NPM_REGISTRY` build arguments
+can select alternative package mirrors.
+
 Do not commit `.env` files, `config.yaml`, runtime data, uploaded documents,
 or private deployment settings. Preserve upstream attribution and license
 notices. PRs should describe the behavior change and its validation.

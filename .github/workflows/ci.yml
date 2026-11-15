@@ -41,3 +41,28 @@ jobs:
         working-directory: frontend
       - run: pnpm typecheck
         working-directory: frontend
+  stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare disposable stack
+        run: |
+          python3 scripts/init_config.py --example technical-docs
+          python3 backend/tests/stack_smoke.py --prepare
+      - name: Build and start Hilo
+        run: docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml up --build -d
+      - name: Index synthetic sources
+        run: |
+          docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T gateway python -m src.community.knowledge_base.indexer
+      - name: Full-stack HTTP acceptance
+        run: python3 backend/tests/stack_smoke.py
+      - name: Shared extensions and Skills visible to agent process
+        run: |
+          docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml exec -T langgraph python -c "from src.skills import load_skills; assert any(s.name == 'hilo-smoke' for s in load_skills())"
+      - name: Stack diagnostics
+        if: failure()
+        run: docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml logs --tail=120
+      - name: Remove disposable stack
+        if: always()
+        run: docker compose -p hilo-smoke -f docker/compose.hilo.yaml -f docker/compose.smoke.yaml down -v

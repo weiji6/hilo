@@ -75,6 +75,9 @@ Both backend services bind the same `extensions_config.json` and share a writabl
 `custom-skills` volume under the read-only Skills tree. MCP tool loading checks
 the shared configuration for changes. Docker's `backend/requirements.txt` is
 exported from the frozen `uv.lock`; CI rejects dependency manifest drift.
+Docker builds use official package registries by default, with configurable
+Python/npm mirrors. The separate smoke Compose overlay uses deterministic HTTP
+model fixtures and its own project volumes for complete stack acceptance.
 Agent exports load the lead-agent factory lazily so a fresh process can import
 the subagent executor without a circular import through the middleware chain.
 

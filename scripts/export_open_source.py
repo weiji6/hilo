@@ -35,6 +35,7 @@ DOC_FILES = {
 }
 DOCKER_FILES = {
     "docker/compose.hilo.yaml",
+    "docker/compose.smoke.yaml",
     "docker/nginx/hilo.conf",
     "docker/provisioner/app.py",
     "docker/provisioner/Dockerfile",

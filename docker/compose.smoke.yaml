@@ -1,0 +1,15 @@
+# Deterministic HTTP model fixture for full-stack acceptance; no provider keys.
+# Use only with the base Hilo Compose file and a dedicated project name.
+services:
+  gateway:
+    image: hilo-smoke-backend:local
+  langgraph:
+    image: hilo-smoke-backend:local
+  frontend:
+    image: hilo-smoke-frontend:local
+  auth-migrate:
+    image: hilo-smoke-frontend:local
+  fixture:
+    image: hilo-smoke-backend:local
+    working_dir: /app/backend
+    command: ["python", "tests/stack_fixture.py"]

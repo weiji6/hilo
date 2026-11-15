@@ -1,14 +1,6 @@
 # Backend Development Dockerfile
 FROM python:3.12-slim
 
-# Use domestic Debian mirrors to reduce build latency on CN servers.
-RUN set -eux; \
-    codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"; \
-    printf 'deb https://mirrors.tuna.tsinghua.edu.cn/debian/ %s main\n' "$codename" > /etc/apt/sources.list.d/debian.sources.list; \
-    printf 'deb https://mirrors.tuna.tsinghua.edu.cn/debian/ %s-updates main\n' "$codename" >> /etc/apt/sources.list.d/debian.sources.list; \
-    printf 'deb https://mirrors.tuna.tsinghua.edu.cn/debian-security %s-security main\n' "$codename" >> /etc/apt/sources.list.d/debian.sources.list; \
-    rm -f /etc/apt/sources.list.d/debian.sources
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
@@ -18,8 +10,8 @@ RUN apt-get update && apt-get install -y \
 # Create an isolated runtime environment for backend dependencies.
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-ENV PIP_INDEX_URL="https://pypi.tuna.tsinghua.edu.cn/simple"
-ENV PIP_TRUSTED_HOST="pypi.tuna.tsinghua.edu.cn"
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 ENV PIP_DEFAULT_TIMEOUT="120"
 ENV PIP_DISABLE_PIP_VERSION_CHECK="1"
 
