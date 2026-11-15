@@ -48,12 +48,15 @@ def body(client, filename):
 
 
 def run(client, thread_id, question, *, context=None, configurable=None, expect_error=False):
+    run_config = {"recursion_limit": 40}
+    if configurable is not None:
+        run_config["configurable"] = {"thinking_enabled": False, **configurable}
     payload = {
         "assistant_id": "lead_agent",
         "input": {"messages": [{"role": "user", "content": question}]},
         "stream_mode": ["values", "messages-tuple"],
         "context": {"thinking_enabled": False, **(context or {})},
-        "config": {"recursion_limit": 40, "configurable": {"thinking_enabled": False, **(configurable or {})}},
+        "config": run_config,
     }
     state, errors, event = None, [], ""
     with client.request(f"{THREADS}/{thread_id}/runs/stream", payload) as response:
@@ -101,13 +104,13 @@ def verify_before(base_url, state):
     assert "OWNER_A_NEW" in body(owner, "personal-smoke.txt")
     assert "OWNER_B_ONLY" in body(other, "personal-smoke.txt")
     spoofed = {"user_id": other_id, "thread_id": other_thread}
-    final = run(owner, thread_id, f"HILO_SCOPE_CHECK DOC_ID={record['id']}", context=spoofed, configurable=spoofed)
+    final = run(owner, thread_id, f"HILO_SCOPE_CHECK DOC_ID={record['id']}", context=spoofed)
     serialized = json.dumps(final)
     assert "OWNER_A_NEW" in str(final["messages"][-1]["content"]), serialized
     assert "OWNER_B_ONLY" not in serialized
     assert any(m.get("name") == "knowledge_locate" and "OWNER_A_NEW" in str(m["content"]) for m in final["messages"])
     denied_thread = owner.json(THREADS, {})["thread_id"]
-    denied = run(owner, denied_thread, f"HILO_SCOPE_CHECK DOC_ID={other_record['id']}", context=spoofed, configurable=spoofed)
+    denied = run(owner, denied_thread, f"HILO_SCOPE_CHECK DOC_ID={other_record['id']}", context=spoofed)
     assert "OWNER_B_ONLY" not in json.dumps(denied)
     assert "【无法回答】" in str(denied["messages"][-1]["content"])
     print("PASS personal retrieval ignores spoofed identity and cannot locate another user's document", flush=True)
@@ -115,7 +118,7 @@ def verify_before(base_url, state):
     for client, target, marker in ((owner, thread_id, "OWNER_A_NEW"), (other, other_thread, "OWNER_B_ONLY")):
         uploaded = client.upload(f"/api/threads/{target}/uploads", "thread-scope.md", (marker + " synthetic thread evidence. ").encode() * 10)
         assert uploaded["files"][0]["parse_status"] == "parsed", uploaded
-    final = run(owner, thread_id, "HILO_SCOPE_CHECK DOC_ID=thread-scope.md", context=spoofed, configurable=spoofed)
+    final = run(owner, thread_id, "HILO_SCOPE_CHECK DOC_ID=thread-scope.md", context=spoofed)
     assert "OWNER_A_NEW" in str(final["messages"][-1]["content"]), final["messages"][-1]
     assert "OWNER_B_ONLY" not in json.dumps(final)
     print("PASS thread attachment retrieval remains bound to the owned URL thread", flush=True)
