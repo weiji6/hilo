@@ -143,7 +143,7 @@ def test_executor_can_be_imported_first_in_a_fresh_process(tmp_path):
     import sys
 
     result = subprocess.run(
-        [sys.executable, "-c", "from src.subagents.executor import SubagentExecutor; from src.agents import make_lead_agent; assert callable(make_lead_agent)"],
+        [sys.executable, "-c", "from src.subagents.executor import SubagentExecutor; import src.agents as agents; assert callable(vars(agents)['make_lead_agent'])"],
         cwd=ROOT / "backend",
         env={**os.environ, "HILO_HOME": str(tmp_path)},
         capture_output=True,
