@@ -65,8 +65,14 @@ knowledge_base:
   embedding:
     use: langchain_openai:OpenAIEmbeddings
     model: ${EMBEDDING_MODEL:-text-embedding-3-small}
-    api_key: $OPENAI_API_KEY
+    # OpenAIEmbeddings reads OPENAI_API_KEY when no separate key is set.
+    api_key: ${EMBEDDING_API_KEY:-null}
     api_base: ${EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  mineru_api:
+    enabled: ${MINERU_API_ENABLED:-false}
+    api_token: ${MINERU_API_TOKEN:-}
+    base_url: ${MINERU_API_BASE_URL:-https://mineru.net}
+    model_version: ${MINERU_API_MODEL_VERSION:-vlm}
   chunking:
     chunk_size: 1000
     chunk_overlap: 200

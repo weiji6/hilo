@@ -34,8 +34,16 @@ cd hilo
 make config
 ```
 
-编辑 `backend/.env`，填写 `OPENAI_API_KEY`。模板使用兼容 OpenAI 的对话模型和嵌入服务，
-可按服务商修改 `OPENAI_MODEL`、`OPENAI_BASE_URL`、`EMBEDDING_MODEL` 和 `EMBEDDING_BASE_URL`。
+在 `backend/.env` 配置外部服务。变量示例见 [backend/.env.example](backend/.env.example)。
+
+| 服务 | 配置 |
+| --- | --- |
+| OpenAI 兼容对话模型 | `OPENAI_API_KEY`、`OPENAI_MODEL`、`OPENAI_BASE_URL` |
+| OpenAI 兼容向量嵌入 | `EMBEDDING_MODEL`、`EMBEDDING_BASE_URL`。独立凭据用 `EMBEDDING_API_KEY`，留空则复用 `OPENAI_API_KEY` |
+| 可选的 MinerU HTTP OCR | `MINERU_API_ENABLED=true`、`MINERU_API_TOKEN`。可用 `MINERU_API_BASE_URL` 和 `MINERU_API_MODEL_VERSION` 覆盖默认值。用于会话中的 PDF 和 Office 附件 |
+
+已有 `config.yaml` 时，将新版 `config.example.yaml` 中 `knowledge_base.embedding.api_key`
+和 `knowledge_base.mineru_api` 的配置同步进去，再执行 `make docker-start` 让 Compose 应用新的环境变量。
 
 ```bash
 make docker-start
@@ -45,6 +53,8 @@ make index-knowledge
 打开 **http://localhost:2026**，注册本地账号，尝试询问示例 worker 的重试策略。
 首次构建镜像和下载依赖可能需要较长时间。默认栈包括前端、API 网关、LangGraph 开发运行时、
 登录使用的 MariaDB、Qdrant 与 nginx；Web 入口绑定本机地址。
+`make docker-start` 等待服务通过健康检查，登录数据库迁移会自动执行。
+用 `make docker-status` 查看服务和迁移状态，用 `make docker-logs` 跟踪日志。
 
 `make config` 会创建本地配置、生成随机认证密钥、选择技术文档领域配置，并复制虚构示例文档。
 已有文件会保留；如果你已经有 `config.yaml`，需要手动选择其中的领域配置。

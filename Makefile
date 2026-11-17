@@ -1,9 +1,9 @@
-.PHONY: help config install dev docker-start docker-stop docker-logs index-knowledge test export
+.PHONY: help config install dev docker-start docker-stop docker-status docker-logs index-knowledge test export
 COMPOSE = docker compose -p hilo -f docker/compose.hilo.yaml
 PYTHON ?= python3
 
 help:
-	@echo "Hilo: config | install | dev | docker-start | docker-stop | index-knowledge | test | export"
+	@echo "Hilo: config | install | dev | docker-start | docker-stop | docker-status | docker-logs | index-knowledge | test | export"
 
 config:
 	$(PYTHON) scripts/init_config.py --example technical-docs
@@ -16,10 +16,13 @@ install:
 dev: docker-start
 
 docker-start:
-	$(COMPOSE) up --build -d
+	$(COMPOSE) up --build --wait --wait-timeout 240
 
 docker-stop:
 	$(COMPOSE) down
+
+docker-status:
+	$(COMPOSE) ps -a
 
 docker-logs:
 	$(COMPOSE) logs --tail=100 -f

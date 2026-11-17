@@ -81,8 +81,17 @@ model fixtures and its own project volumes for complete stack acceptance.
 Agent exports load the lead-agent factory lazily so a fresh process can import
 the subagent executor without a circular import through the middleware chain.
 The factory itself is a concrete module export because LangGraph discovers it
-through the module dictionary. The proxy starts only after the gateway,
-LangGraph API and frontend session endpoint pass their health checks.
+through the module dictionary. The gateway and LangGraph wait for Qdrant readiness.
+MariaDB must be healthy before the one-shot auth migration runs, and the frontend
+waits for it to finish. The proxy waits for the gateway, LangGraph API, and
+frontend session endpoint, then probes the session endpoint through nginx.
+`make docker-start` waits for these checks before returning.
+
+Both Python services load `backend/.env`. OpenAI-compatible chat and embeddings
+can use independent endpoints, models, and credentials. Embeddings reuse
+`OPENAI_API_KEY` when `EMBEDDING_API_KEY` is unset. The optional MinerU HTTP API
+parses PDF and Office attachments in the conversation upload route when enabled.
+The offline OCR command uses its own MinerU gRPC configuration.
 
 ## Source publication and supporting tools
 

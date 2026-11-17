@@ -43,9 +43,17 @@ cd hilo
 make config
 ```
 
-Edit `backend/.env` and set `OPENAI_API_KEY`. The template uses an OpenAI-compatible
-chat model and embeddings; change `OPENAI_MODEL`, `OPENAI_BASE_URL`,
-`EMBEDDING_MODEL`, and `EMBEDDING_BASE_URL` for your provider.
+Configure external services in `backend/.env`. See [backend/.env.example](backend/.env.example).
+
+| Service | Settings |
+| --- | --- |
+| OpenAI-compatible chat | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` |
+| OpenAI-compatible embeddings | `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, and `EMBEDDING_API_KEY` for a separate credential. An unset or empty key uses `OPENAI_API_KEY`. |
+| Optional MinerU HTTP OCR | `MINERU_API_ENABLED=true` and `MINERU_API_TOKEN`. Override `MINERU_API_BASE_URL` and `MINERU_API_MODEL_VERSION` if needed. Used for PDF and Office attachments in chat. |
+
+For an existing `config.yaml`, copy the `knowledge_base.embedding.api_key` and
+`knowledge_base.mineru_api` settings from `config.example.yaml`. Run `make docker-start`
+to apply the environment changes.
 
 ```bash
 make docker-start
@@ -56,6 +64,8 @@ Open **http://localhost:2026**, create a local account, and ask about the exampl
 worker's retry policy. Initial image builds and dependency downloads can take time.
 The stack includes the frontend, API gateway, LangGraph development runtime,
 MariaDB for login, Qdrant, and nginx. It binds the web entry point to localhost.
+`make docker-start` waits for the stack health checks. The auth migration runs automatically.
+Use `make docker-status` to inspect the service and migration status and `make docker-logs` to follow logs.
 
 `make config` creates local config files, generates a random authentication secret,
 selects the technical-documentation profile, and copies synthetic example documents.
