@@ -8,7 +8,13 @@ from pydantic import BaseModel
 
 from src.community.knowledge_base.book_metadata import normalize_folder_path
 from src.community.knowledge_base.common import derive_global_doc_id, get_user_collection_name, resolve_project_path
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
+from src.community.knowledge_base.document_parsers import (
+    OFFICE_EXTENSIONS,
+    PDF_EXTENSIONS,
+    get_configured_ocr_parse_method,
+    parse_document_with_configured_ocr,
+    parse_local_text,
+)
 from src.community.knowledge_base.folder_registry import (
     delete_folder_path,
     ensure_folder_path,
@@ -21,7 +27,6 @@ from src.community.knowledge_base.indexer import (
     upsert_user_knowledge_records,
 )
 from src.community.knowledge_base.locator import extract_paragraph_location, locate_document
-from src.community.knowledge_base.mineru_grpc import build_structured_document_from_mineru_grpc
 from src.community.knowledge_base.retriever import get_qdrant_client
 from src.community.knowledge_base.structured_document import build_bbox_from_position, build_structured_document
 from src.community.knowledge_base.translation_grpc import translate_blocks_to_chinese_via_grpc
@@ -622,17 +627,20 @@ def _process_user_record_ocr(user_id: str, record_id: str) -> None:
         file_ext = file_path.suffix.lower()
         if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in {".md", ".txt"}:
             hints = record.get("hints") or {}
-            record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
+            record["parse_method"] = (
+                "local_text"
+                if file_ext in {".md", ".txt"}
+                else get_configured_ocr_parse_method(file_path.name)
+            )
             save_user_record(user_id, record)
             if file_ext in {".md", ".txt"}:
                 structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
             else:
-                structured_payload = build_structured_document_from_mineru_grpc(
+                structured_payload = parse_document_with_configured_ocr(
                     file_path,
                     title=str(record.get("display_title") or Path(source_filename).stem),
                     parser_name=str(record["parse_method"]),
                     hints=hints,
-                    language_hint=hints.get("language_hint"),
                 )
             structured_filename = persist_user_structured_document(
                 user_id,

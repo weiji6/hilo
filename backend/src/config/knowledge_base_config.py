@@ -218,6 +218,32 @@ class MineruApiConfig(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
 
+class DeepSeekOcrConfig(BaseModel):
+    """Configuration for DeepSeek's document OCR API."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Whether DeepSeek OCR is the preferred document parser.",
+    )
+    api_key: str | None = Field(
+        default=None,
+        description="DeepSeek API key. Falls back to DEEPSEEK_OFFICIAL_API_KEY or OPENAI_API_KEY.",
+    )
+    base_url: str = Field(
+        default="https://api.deepseek.com",
+        description="DeepSeek API base URL, with or without the /v1 suffix.",
+    )
+    purpose: Literal["text_recognition", "rich_layout_recognition"] = Field(
+        default="text_recognition",
+        description="OCR mode sent to DeepSeek.",
+    )
+    request_timeout: int = Field(
+        default=190,
+        ge=1,
+        description="Total upload and recognition timeout in seconds.",
+    )
+
+
 class TranslationRpcConfig(BaseModel):
     """Configuration for translation gRPC service."""
 
@@ -310,6 +336,10 @@ class KnowledgeBaseConfig(BaseModel):
     mineru_api: MineruApiConfig | None = Field(
         default=None,
         description="Optional MinerU remote HTTP API configuration (mineru.net).",
+    )
+    deepseek_ocr: DeepSeekOcrConfig | None = Field(
+        default=None,
+        description="Optional DeepSeek OCR configuration for PDF, Word, and PowerPoint documents.",
     )
     translation_rpc: TranslationRpcConfig | None = Field(
         default=None,

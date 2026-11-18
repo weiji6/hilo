@@ -68,6 +68,12 @@ knowledge_base:
     # OpenAIEmbeddings reads OPENAI_API_KEY when no separate key is set.
     api_key: ${EMBEDDING_API_KEY:-null}
     api_base: ${EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  # DeepSeek OCR is preferred when enabled for PDF, Word, and PowerPoint files.
+  deepseek_ocr:
+    enabled: ${DEEPSEEK_OCR_ENABLED:-false}
+    api_key: ${DEEPSEEK_OCR_API_KEY:-null}
+    base_url: ${DEEPSEEK_OCR_BASE_URL:-https://api.deepseek.com}
+    purpose: ${DEEPSEEK_OCR_PURPOSE:-text_recognition}
   mineru_api:
     enabled: ${MINERU_API_ENABLED:-false}
     api_token: ${MINERU_API_TOKEN:-}

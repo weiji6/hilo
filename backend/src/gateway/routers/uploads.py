@@ -8,7 +8,13 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.community.knowledge_base.book_metadata_runtime import maybe_generate_book_metadata
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
+from src.community.knowledge_base.document_parsers import (
+    OFFICE_EXTENSIONS,
+    PDF_EXTENSIONS,
+    get_configured_ocr_parse_method,
+    parse_document_with_configured_ocr,
+    parse_local_text,
+)
 from src.community.knowledge_base.ingestion import (
     build_ingestion_record,
     build_ingestion_urls,
@@ -20,8 +26,6 @@ from src.community.knowledge_base.ingestion import (
     remove_ingestion_record,
     save_ingestion_record,
 )
-from src.community.knowledge_base.mineru_api import build_structured_document_from_mineru_api
-from src.community.knowledge_base.mineru_grpc import build_structured_document_from_mineru_grpc
 from src.config.knowledge_base_config import get_knowledge_base_config
 from src.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from src.sandbox.sandbox_provider import get_sandbox_provider
@@ -152,34 +156,25 @@ async def upload_files(
             # Check if file should be parsed into structured text
             file_ext = file_path.suffix.lower()
             if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in {".md", ".txt"}:
-                kb_config = get_knowledge_base_config()
-                use_remote_api = (
-                    kb_config.mineru_api is not None
-                    and kb_config.mineru_api.enabled
+                record["parse_method"] = (
+                    "local_text"
+                    if file_ext in {".md", ".txt"}
+                    else get_configured_ocr_parse_method(file_path.name)
                 )
-                record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else ("ocr_pdf_mineru_api" if use_remote_api else "ocr_pdf_mineru_grpc")
                 file_info["parse_method"] = record["parse_method"]
                 try:
                     if file_ext in {".md", ".txt"}:
                         structured_payload = parse_local_text(file_path, title=record["display_title"], hints=hints)
-                    elif use_remote_api:
-                        structured_payload = build_structured_document_from_mineru_api(
-                            file_path,
-                            title=record["display_title"],
-                            parser_name=record["parse_method"],
-                            hints=hints,
-                        )
                     else:
-                        structured_payload = build_structured_document_from_mineru_grpc(
+                        structured_payload = parse_document_with_configured_ocr(
                             file_path,
                             title=record["display_title"],
                             parser_name=record["parse_method"],
                             hints=hints,
-                            language_hint=hints.get("language_hint"),
                         )
                 except Exception as exc:
                     structured_payload = None
-                    logger.error("MinerU parsing failed for %s: %s", file_path.name, exc)
+                    logger.error("Document parsing failed for %s: %s", file_path.name, exc)
                 if structured_payload:
                     structured_filename = persist_thread_structured_document(
                         thread_id,

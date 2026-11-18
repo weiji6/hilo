@@ -49,10 +49,11 @@ Configure external services in `backend/.env`. See [backend/.env.example](backen
 | --- | --- |
 | OpenAI-compatible chat | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` |
 | OpenAI-compatible embeddings | `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, and `EMBEDDING_API_KEY` for a separate credential. An unset or empty key uses `OPENAI_API_KEY`. |
-| Optional MinerU HTTP OCR | `MINERU_API_ENABLED=true` and `MINERU_API_TOKEN`. Override `MINERU_API_BASE_URL` and `MINERU_API_MODEL_VERSION` if needed. Used for PDF and Office attachments in chat. |
+| Optional [DeepSeek OCR](https://api-docs.deepseek.com/zh-cn/guides/ocr/) | Set `DEEPSEEK_OCR_ENABLED=true`. It reuses `OPENAI_API_KEY` by default or accepts a separate `DEEPSEEK_OCR_API_KEY`. It handles PDF, Word, and PowerPoint documents in thread uploads, personal knowledge, and global knowledge. |
+| Compatible MinerU OCR | Existing HTTP and gRPC settings remain supported. DeepSeek takes precedence when enabled. |
 
 For an existing `config.yaml`, copy the `knowledge_base.embedding.api_key` and
-`knowledge_base.mineru_api` settings from `config.example.yaml`. Run `make docker-start`
+`knowledge_base.deepseek_ocr` settings from `config.example.yaml`. Run `make docker-start`
 to apply the environment changes.
 
 ```bash
@@ -165,8 +166,9 @@ extensions configuration and a writable custom Skills volume.
 
 Full-stack acceptance verifies clean Docker builds, authentication, uploads,
 indexing, custom Skills and cited answers over HTTP SSE. Chat and embedding
-providers are deterministic HTTP fixtures; live-model quality and external OCR
-still require separate validation. See the [functionality audit](docs/functionality-audit.md).
+providers are deterministic HTTP fixtures. DeepSeek OCR was separately verified
+through its live API and Hilo's local upload path; other external services still
+require deployment-specific validation. See the [functionality audit](docs/functionality-audit.md).
 
 The lead agent selects sources. Ordinary questions retrieve evidence directly;
 explicit research tasks can delegate bounded work. Child results are synthesized

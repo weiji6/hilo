@@ -35,7 +35,13 @@ from src.community.knowledge_base.citations import (
     resolve_result_citation_context,
 )
 from src.community.knowledge_base.common import derive_global_doc_id, resolve_project_path
-from src.community.knowledge_base.document_parsers import OFFICE_EXTENSIONS, PDF_EXTENSIONS, parse_local_text
+from src.community.knowledge_base.document_parsers import (
+    OFFICE_EXTENSIONS,
+    PDF_EXTENSIONS,
+    get_configured_ocr_parse_method,
+    parse_document_with_configured_ocr,
+    parse_local_text,
+)
 from src.community.knowledge_base.folder_registry import (
     delete_folder_path,
     ensure_folder_path,
@@ -48,7 +54,6 @@ from src.community.knowledge_base.indexer import (
     delete_global_knowledge_documents,
 )
 from src.community.knowledge_base.locator import extract_paragraph_location, locate_document
-from src.community.knowledge_base.mineru_grpc import build_structured_document_from_mineru_grpc
 from src.community.knowledge_base.retriever import get_qdrant_client, get_retriever
 from src.community.knowledge_base.structured_document import (
     build_bbox_from_position,
@@ -876,7 +881,7 @@ def _build_global_ingestion_record(
     parse_method = "binary_only"
     indexable = False
     if suffix in INDEXABLE_EXTENSIONS or suffix in PDF_EXTENSIONS or suffix in OFFICE_EXTENSIONS:
-        parse_method = "ocr_pdf_mineru_grpc"
+        parse_method = get_configured_ocr_parse_method(filename)
         indexable = True
 
     urls = _build_global_urls(filename)
@@ -1004,7 +1009,11 @@ def _process_single_global_ocr(filename: str) -> None:
         file_ext = file_path.suffix.lower()
         if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in INDEXABLE_EXTENSIONS:
             hints = record.get("hints") or {}
-            record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
+            record["parse_method"] = (
+                "local_text"
+                if file_ext in {".md", ".txt"}
+                else get_configured_ocr_parse_method(file_path.name)
+            )
             _save_global_record(filename, record)
 
             disk_sem = _get_disk_io_semaphore()
@@ -1020,19 +1029,18 @@ def _process_single_global_ocr(filename: str) -> None:
             if file_ext in {".md", ".txt"}:
                 structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
             else:
-                structured_payload = build_structured_document_from_mineru_grpc(
+                structured_payload = parse_document_with_configured_ocr(
                     file_path,
                     title=record["display_title"],
                     parser_name=record["parse_method"],
                     hints=hints,
-                    language_hint=hints.get("language_hint"),
                     file_content=file_content,
                 )
             del file_content  # release memory before acquiring disk semaphore again
 
             # Phase 3: write structured JSON to disk (gated — limits concurrent writes)
             logger.info(
-                "[ocr-step] %s STEP 4a: gRPC returned payload (pages=%s); waiting for disk-write slot",
+                "[ocr-step] %s STEP 4a: OCR returned payload (pages=%s); waiting for disk-write slot",
                 filename,
                 len((structured_payload or {}).get("pages") or []),
             )
@@ -1105,17 +1113,20 @@ def _process_global_knowledge_uploads(filenames: list[str]) -> None:
                 file_ext = file_path.suffix.lower()
                 if file_ext in PDF_EXTENSIONS or file_ext in OFFICE_EXTENSIONS or file_ext in INDEXABLE_EXTENSIONS:
                     hints = record.get("hints") or {}
-                    record["parse_method"] = "local_text" if file_ext in {".md", ".txt"} else "ocr_pdf_mineru_grpc"
+                    record["parse_method"] = (
+                        "local_text"
+                        if file_ext in {".md", ".txt"}
+                        else get_configured_ocr_parse_method(file_path.name)
+                    )
                     _save_global_record(safe_filename, record)
                     if file_ext in {".md", ".txt"}:
                         structured_payload = parse_local_text(file_path, title=str(record.get("display_title") or file_path.stem), hints=hints)
                     else:
-                        structured_payload = build_structured_document_from_mineru_grpc(
+                        structured_payload = parse_document_with_configured_ocr(
                             file_path,
                             title=record["display_title"],
                             parser_name=record["parse_method"],
                             hints=hints,
-                            language_hint=hints.get("language_hint"),
                         )
                     structured_path = save_structured_document(
                         ingestion_dir,

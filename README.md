@@ -40,10 +40,11 @@ make config
 | --- | --- |
 | OpenAI 兼容对话模型 | `OPENAI_API_KEY`、`OPENAI_MODEL`、`OPENAI_BASE_URL` |
 | OpenAI 兼容向量嵌入 | `EMBEDDING_MODEL`、`EMBEDDING_BASE_URL`。独立凭据用 `EMBEDDING_API_KEY`，留空则复用 `OPENAI_API_KEY` |
-| 可选的 MinerU HTTP OCR | `MINERU_API_ENABLED=true`、`MINERU_API_TOKEN`。可用 `MINERU_API_BASE_URL` 和 `MINERU_API_MODEL_VERSION` 覆盖默认值。用于会话中的 PDF 和 Office 附件 |
+| 可选的 [DeepSeek OCR](https://api-docs.deepseek.com/zh-cn/guides/ocr/) | `DEEPSEEK_OCR_ENABLED=true`。默认复用 `OPENAI_API_KEY`，也可单独设置 `DEEPSEEK_OCR_API_KEY`。用于会话附件、个人知识库和全局知识库中的 PDF、Word 与 PowerPoint 文档 |
+| 兼容的 MinerU OCR | 保留现有 HTTP 与 gRPC 配置；DeepSeek OCR 启用时优先使用 DeepSeek |
 
 已有 `config.yaml` 时，将新版 `config.example.yaml` 中 `knowledge_base.embedding.api_key`
-和 `knowledge_base.mineru_api` 的配置同步进去，再执行 `make docker-start` 让 Compose 应用新的环境变量。
+和 `knowledge_base.deepseek_ocr` 的配置同步进去，再执行 `make docker-start` 让 Compose 应用新的环境变量。
 
 ```bash
 make docker-start
@@ -63,7 +64,8 @@ make index-knowledge
 使用 `make docker-stop` 停止服务。命名卷会保留运行数据、检查点、认证数据库与向量索引。
 这是一套本地开发配置；对外部署前请阅读 [SECURITY.md](SECURITY.md)。
 独立整栈验收已验证全新 Docker 构建、注册登录、文档上传与索引、Skills 安装和 SSE 引用问答。
-聊天与嵌入使用确定性的 HTTP 测试服务；真实模型效果及外部 OCR 仍需单独验证，见[功能核对记录](docs/functionality-audit.md)。
+整栈验收中的聊天与嵌入使用确定性的 HTTP 测试服务；DeepSeek OCR 另以合成 PDF
+完成了真实接口和本地上传链路验证，其他外部服务仍需按部署环境单独验证，见[功能核对记录](docs/functionality-audit.md)。
 
 ## 接入自己的领域
 

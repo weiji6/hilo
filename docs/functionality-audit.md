@@ -42,6 +42,7 @@
 | --- | --- |
 | 快速开始示例可被目录搜索找到，但无上传记录时向量重建跳过它，正文定位也失败 | 全局索引与 locator 支持直接读取 UTF-8 Markdown/TXT；真实 Qdrant + 正文工具测试验证示例内容与引用 |
 | Markdown/TXT 上传误调用未配置的 OCR 服务 | 线程、个人与全局上传改用本地文本解析，PDF/Office 保留外部解析路径 |
+| MinerU 凭据过期或服务不可达时 PDF/Office 无法解析 | 接入 DeepSeek 官方 OCR；统一线程、个人与全局上传的解析器选择，并保留 MinerU 兼容回退 |
 | 同名线程/个人文档可能读到全局 SQLite 正文 | scoped locator 不再查询全局段落库；回归验证来源正文隔离 |
 | 独立进程先导入子 Agent 执行器时循环导入失败 | 延迟导出主 Agent 工厂；子进程实测首次导入 |
 | Docker 与本地依赖清单漂移，包括缺少 Anthropic 集成 | 从 uv.lock 重新导出 requirements.txt，CI 比较两者 |
@@ -120,7 +121,7 @@ Compose 项目、空 MariaDB/Qdrant 卷、虚构文档和本地 HTTP 模型测�
 ## 尚未完成的外部验收
 
 - 用户选用的真实聊天/嵌入模型、检索质量、回答质量和引用语义正确性评估。
-- 外部 MinerU OCR、Kubernetes/AIO 沙箱、MCP 服务器和网络工具的真实服务调用。
+- MinerU OCR、Kubernetes/AIO 沙箱、MCP 服务器和网络工具的真实服务调用。DeepSeek OCR 已用合成 PDF 完成真实接口验证。
 - 浏览器界面的完整自动交互验收。
 
 当前可确认 Hilo 的默认本地开发栈能够独立构建、启动并完成上述 RAG 使用流程。

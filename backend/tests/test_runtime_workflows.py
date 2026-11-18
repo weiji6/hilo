@@ -75,7 +75,7 @@ def runtime_environment(tmp_path, monkeypatch):
     from src.gateway.routers import knowledge, uploads
 
     for module in (knowledge, uploads, user_knowledge):
-        monkeypatch.setattr(module, "build_structured_document_from_mineru_grpc", forbidden_ocr)
+        monkeypatch.setattr(module, "parse_document_with_configured_ocr", forbidden_ocr)
     yield SimpleNamespace(docs=docs, vector=client, root=tmp_path)
     client.close()
     reset_app_config()

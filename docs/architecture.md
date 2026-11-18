@@ -89,8 +89,12 @@ frontend session endpoint, then probes the session endpoint through nginx.
 
 Both Python services load `backend/.env`. OpenAI-compatible chat and embeddings
 can use independent endpoints, models, and credentials. Embeddings reuse
-`OPENAI_API_KEY` when `EMBEDDING_API_KEY` is unset. The optional MinerU HTTP API
-parses PDF and Office attachments in the conversation upload route when enabled.
+`OPENAI_API_KEY` when `EMBEDDING_API_KEY` is unset. DeepSeek OCR can reuse the
+same credential or use `DEEPSEEK_OCR_API_KEY`; when enabled, it parses PDF,
+Word, and PowerPoint documents for thread, personal, and global knowledge uploads.
+Hilo stores the returned text as physical pages and removes DeepSeek's layout
+markers before indexing. Existing MinerU HTTP and gRPC integrations remain
+fallback providers.
 The offline OCR command uses its own MinerU gRPC configuration.
 
 ## Source publication and supporting tools
@@ -112,7 +116,8 @@ paragraph/FTS workflow. `--docs-dir` determines the default adjacent paragraphs.
 a missing database is rebuilt even if source files retain old .resolved markers.
 `prewarm_knowledge_indexes.py`, `reindex_global_knowledge.py`, paragraph-ID
 normalization, and `backend/scripts/local_ocr.py` provide optional maintenance/OCR
-entrypoints. OCR requires an external MinerU gRPC service. Vector indexing remains
+entrypoints. That standalone OCR command requires an external MinerU gRPC service;
+gateway uploads use the configured provider described above. Vector indexing remains
 a separate operation from SQLite ingestion. HILO_CONFIG_PATH takes precedence over
 the legacy alias in the restored ingestion and OCR helpers.
 
