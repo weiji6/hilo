@@ -23,6 +23,12 @@ for frontend edits. Run Ruff on changed Python files. Runtime workflow tests
 use local deterministic model/embedding fixtures, real HTTP routes and embedded
 Qdrant; no production credentials or OCR service are required.
 
+The backend suite covers domain isolation, retrieval budgets, source visibility,
+body-page evidence, citation registries, and optional task memory. Runtime workflow
+tests execute real FastAPI routes, text parsers, embedded Qdrant, and synchronous
+and asynchronous LangGraph agents. Chat and embedding providers use deterministic
+fixtures; passing these tests does not measure retrieval or answer quality.
+
 After changing backend dependencies, regenerate the Docker manifest from
 `backend/` with `uv export --frozen --no-dev --no-hashes --no-emit-project
 --no-header --format requirements-txt --output-file requirements.txt`.
@@ -57,6 +63,25 @@ graceful container recreation. Its state file contains synthetic credentials and
 must stay outside the repository. Default Docker builds use official
 Debian, PyPI and npm registries; `PIP_INDEX_URL` and `NPM_REGISTRY` build arguments
 can select alternative package mirrors.
+
+Full-stack tests exercise the application over HTTP and SSE, including thread
+ownership, user knowledge isolation, missing-evidence handling, and provider
+recovery. They do not automate browser interactions or establish durability after
+an abrupt process or host failure. Test real chat/embedding providers, OCR, MCP,
+network tools, and optional AIO/Kubernetes sandboxes in the target environment.
+Evaluate source recall, evidence coverage, answer quality, and citation entailment
+with the documents and models used by your application.
+
+Run `python3 scripts/export_open_source.py --check` before source distribution.
+The publication tests export the real source tree and verify supported runtime
+modules, ingestion/OCR helpers, and the optional Kubernetes provisioner. The
+export excludes Git history, local settings, runtime data, user documents, private
+deployment scripts, and editor recovery files. To run these checks separately:
+
+```bash
+cd backend
+uv run pytest tests/test_framework_bootstrap.py tests/test_publication_integrity.py -q
+```
 
 Do not commit `.env` files, `config.yaml`, runtime data, uploaded documents,
 or private deployment settings. Preserve upstream attribution and license

@@ -1,4 +1,8 @@
 .git
+**/.DS_Store
+**/*.swp
+**/*.swo
+**/*~
 **/.git
 **/.env
 **/.env.*

@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agents.middlewares import task_memory_middleware  # noqa: E402
@@ -11,6 +12,12 @@ from src.community.knowledge_base.citations import (  # noqa: E402
     KNOWLEDGE_CITATION_REGISTRY_KEY,
     build_citation_stable_key,
 )
+
+
+@pytest.fixture(autouse=True)
+def _enable_task_memory(monkeypatch: Any) -> None:
+    """Exercise enabled memory independently of local application settings."""
+    monkeypatch.setenv("TASK_MEMORY_ENABLED", "true")
 
 
 class _FakeVectorStore:

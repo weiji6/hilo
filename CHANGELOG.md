@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+Clarify Hilo's scope as an LLM framework for Agentic Search. Remove the planning
+backlog and one-off migration audit, keep reproducible validation guidance in
+CONTRIBUTING.md, and correct outdated authentication descriptions. Remove a
+tracked editor recovery file and the unavailable demo-recording command. Exclude
+editor recovery/backup files and macOS metadata from source exports and Docker
+build contexts.
+
 Verify Hilo independently with a clean full-stack Docker acceptance job and
 deterministic OpenAI-compatible HTTP fixtures. Cover MariaDB authentication,
 text uploads, Qdrant indexing, custom Skills and cited answers over the

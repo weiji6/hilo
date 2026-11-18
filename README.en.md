@@ -2,9 +2,9 @@
 
 **Connect your documents. Follow the evidence.**
 
-Hilo is an extensible **Agentic RAG and knowledge research framework** for building
-assistants that retrieve source material, answer with traceable citations, and
-coordinate deeper research when explicitly requested.
+Hilo is an extensible **LLM framework for Agentic Search**. It combines Agentic RAG,
+evidence retrieval, traceable citations, and multi-agent orchestration to select
+sources, answer questions, and coordinate deeper research when explicitly requested.
 
 [简体中文（默认）](README.md) · **English** · [Architecture](docs/architecture.md) ·
 [Domain profiles](docs/domain-profiles.md) · [Contributing](CONTRIBUTING.md)
@@ -30,7 +30,7 @@ coordinate deeper research when explicitly requested.
 
 Hilo's reusable layer is separate from the subject matter. The technical-documentation
 example includes synthetic source documents; the fiscal-history profile demonstrates
-how the original application can be expressed as configuration, without shipping books.
+how domain rules can be expressed as configuration, without shipping books.
 
 ## Quick start
 
@@ -156,7 +156,8 @@ The ingestion helper populates SQLite paragraphs/FTS from `.structured.json`;
 `make index-knowledge` builds Qdrant vectors. OCR requires a separate compatible
 MinerU gRPC service and moves processed PDFs into `output/done`. Place OCR results
 in the knowledge corpus and ingest/index them separately. See the
-[functionality audit](docs/functionality-audit.md) for restored tooling and limits.
+[architecture](docs/architecture.md) for maintenance tools and
+[CONTRIBUTING.md](CONTRIBUTING.md) for validation scope.
 UTF-8 Markdown/TXT uploads are parsed locally without OCR. Raw Markdown/TXT in
 `knowledge/docs`, including the quick-start examples, can be indexed with
 `make index-knowledge` and located directly for body evidence and citations.
@@ -164,11 +165,10 @@ Files with ingestion records follow those records to avoid indexing both the raw
 source and its structured output. The Docker gateway and agent services share
 extensions configuration and a writable custom Skills volume.
 
-Full-stack acceptance verifies clean Docker builds, authentication, uploads,
+Full-stack tests cover clean Docker builds, authentication, uploads,
 indexing, custom Skills and cited answers over HTTP SSE. Chat and embedding
-providers are deterministic HTTP fixtures. DeepSeek OCR was separately verified
-through its live API and Hilo's local upload path; other external services still
-require deployment-specific validation. See the [functionality audit](docs/functionality-audit.md).
+providers are deterministic HTTP fixtures. External services require
+deployment-specific validation. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The lead agent selects sources. Ordinary questions retrieve evidence directly;
 explicit research tasks can delegate bounded work. Child results are synthesized
@@ -192,19 +192,21 @@ Runtime tests exercise real gateway routes, local parsers, embedded Qdrant, body
 location, and synchronous/asynchronous agent execution with citation state.
 External chat and embedding services are replaced by deterministic local fixtures.
 This is not live-service end-to-end acceptance; see [CONTRIBUTING.md](CONTRIBUTING.md)
-and the [functionality audit](docs/functionality-audit.md).
+for reproduction commands and validation scope.
 
 Use `python3 scripts/export_open_source.py --check` to inspect publication inputs.
 `make export` creates a new source-only snapshot in `release/hilo`, excluding
 Git history, local settings, runtime data, private infrastructure, and demo recordings.
 The exporter refuses to overwrite an existing destination. It distributes source;
-it does not migrate or preserve a repository’s Git commit history.
+the snapshot contains no Git commit history.
 
 ## Current scope
 
-Hilo supports configurable domains, document-based research, and a full-stack
-workspace today. A stable standalone SDK, per-request domain switching, formal
-retrieval-quality benchmarks, and production API authorization remain future work.
+Hilo provides document search, question answering, and research workflows as a
+full-stack Agentic Search source project. Domain profiles are process-wide.
+A stable standalone SDK, per-request domain switching, and formal retrieval-quality
+benchmarks are not provided. Workspace login and authenticated proxies are implemented;
+direct backend APIs still need a production authorization boundary supplied by the deployment.
 Citation checks verify source registration and page type; they do not prove every
 claim is semantically entailed by the cited passage. Model behavior still needs
 application-specific evaluation.

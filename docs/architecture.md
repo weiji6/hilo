@@ -2,9 +2,10 @@
 
 ## Framework boundary
 
-Hilo is a source-based full-stack framework derived from DeerFlow. It currently
+Hilo is an LLM framework for Agentic Search derived from DeerFlow. It currently
 runs a LangGraph agent service and a separate FastAPI gateway behind a Next.js
-workspace. It does not provide an independent, stable pip SDK.
+workspace, distributed as a full-stack source project. It does not provide an
+independent, stable pip SDK.
 
 The inherited runtime supplies agent execution, model integration, Skills, MCP,
 sandbox abstractions, and memory infrastructure. Hilo's knowledge layer supplies
@@ -71,6 +72,14 @@ published, on localhost. Qdrant, auth database, runtime data, and LangGraph
 checkpoints use named volumes. Public production API authorization is not provided
 by this template; review SECURITY.md before exposing services.
 
+Better Auth stores workspace accounts and sessions in the MySQL-compatible
+authentication database. The Next.js `/api/secure-langgraph` proxy checks thread
+ownership and binds run context to the logged-in user and URL thread; it removes
+client-supplied identity fields from `config.configurable`. The
+`/api/secure-knowledge` proxy binds personal-knowledge paths to that user's ID.
+These checks apply to the workspace proxies; direct backend routes retain the
+local-deployment boundary described above.
+
 Both backend services bind the same `extensions_config.json` and share a writable
 `custom-skills` volume alongside the read-only public Skills mount. MCP tool loading checks
 the shared configuration for changes. Docker's `backend/requirements.txt` is
@@ -97,12 +106,10 @@ markers before indexing. Existing MinerU HTTP and gRPC integrations remain
 fallback providers.
 The offline OCR command uses its own MinerU gRPC configuration.
 
-## Source publication and supporting tools
+## Supporting tools and source distribution
 
-The public repository starts from a reviewed source snapshot, with a new Git root;
-this is not a transfer of the original private repository's commit graph. Upstream
-license and attribution remain in LICENSE and NOTICE. Subsequent Hilo commits use
-normal Git history. README.md is Chinese; README.en.md contains English documentation.
+Upstream license and attribution remain in LICENSE and NOTICE. README.md is
+Chinese; README.en.md contains English documentation.
 
 Default tools include knowledge retrieval, file/Skills reading, shell, web fetch,
 and image search. LocalSandbox selects zsh when available, then bash, then /bin/sh,
@@ -111,7 +118,7 @@ host/container; it is not an isolation boundary. Research subagents still receiv
 only scoped retrieval, checkpoint, and result-submission tools. Optional AIO and
 Kubernetes sandbox providers require their own deployment and shared paths.
 
-`scripts/ingest_structured_docs_to_db.py` restores the structured corpus → SQLite
+`scripts/ingest_structured_docs_to_db.py` implements the structured corpus → SQLite
 paragraph/FTS workflow. `--docs-dir` determines the default adjacent paragraphs.db;
 a missing database is rebuilt even if source files retain old .resolved markers.
 `prewarm_knowledge_indexes.py`, `reindex_global_knowledge.py`, paragraph-ID
@@ -119,9 +126,10 @@ normalization, and `backend/scripts/local_ocr.py` provide optional maintenance/O
 entrypoints. That standalone OCR command requires an external MinerU gRPC service;
 gateway uploads use the configured provider described above. Vector indexing remains
 a separate operation from SQLite ingestion. HILO_CONFIG_PATH takes precedence over
-the legacy alias in the restored ingestion and OCR helpers.
+the legacy alias in the ingestion and OCR helpers.
 
 The exporter explicitly includes supported scripts and the generic provisioner,
-while excluding private deployment/synchronization scripts. A regression exports
-the real tree and checks runtime-source parity and supported entrypoints. See
-[functionality audit](functionality-audit.md) for evidence and remaining limits.
+while excluding local configuration, runtime data, editor recovery files, and
+private deployment/synchronization scripts. A regression exports the real tree
+and checks runtime-source parity and supported entrypoints. See
+[CONTRIBUTING.md](../CONTRIBUTING.md) for reproducible tests and validation limits.

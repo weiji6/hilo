@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "auth:migrate": "node scripts/auth-migrate.mjs",
-    "demo:save": "node scripts/save-demo.js",
     "build": "next build",
     "check": "pnpm lint && pnpm typecheck",
     "dev": "next dev --turbo",

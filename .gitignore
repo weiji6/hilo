@@ -40,6 +40,9 @@ htmlcov/
 dist/
 build/
 .DS_Store
+*.swp
+*.swo
+*~
 .idea/
 .claude/
 .githooks/

@@ -21,4 +21,4 @@ local config, credentials, uploaded documents, private infrastructure or Git his
 Publication support: export the reviewed ingestion/maintenance/OCR helpers and
 optional Kubernetes provisioner. Run test_publication_integrity.py when changing
 source allowlists or default tool settings. LocalSandbox must work without zsh.
-See docs/functionality-audit.md for migration and external-service test limits.
+See ../CONTRIBUTING.md for reproducible tests and external-service validation limits.

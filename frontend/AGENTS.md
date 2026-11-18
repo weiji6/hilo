@@ -61,8 +61,8 @@ src/
 │   └── utils/              # Utility functions
 ├── hooks/                  # Custom React hooks
 ├── lib/                    # Shared libraries & utilities
-├── server/                 # Server-side code (Not available yet)
-│   └── better-auth/        # Authentication setup (Not available yet)
+├── server/                 # Server-side authentication
+│   └── better-auth/        # Better Auth sessions and MySQL-compatible storage
 └── styles/                 # Global styles
 ```
 

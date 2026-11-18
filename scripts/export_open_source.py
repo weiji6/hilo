@@ -30,8 +30,6 @@ ROOT_FILES = {
 DOC_FILES = {
     "docs/architecture.md",
     "docs/domain-profiles.md",
-    "docs/roadmap.md",
-    "docs/functionality-audit.md",
 }
 DOCKER_FILES = {
     "docker/compose.hilo.yaml",
@@ -87,6 +85,8 @@ PATTERNS = {
 
 def included(relative: Path) -> bool:
     name = relative.as_posix()
+    if relative.name == ".DS_Store" or relative.suffix in {".swp", ".swo"} or relative.name.endswith("~"):
+        return False
     if any(part in EXCLUDE_PARTS for part in relative.parts):
         return False
     if relative.name.startswith(".env") and relative.name != ".env.example":

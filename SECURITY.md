@@ -11,6 +11,6 @@ an installation, add authentication and authorization at the API boundary,
 TLS, access controls for external tools, and your own operational controls.
 
 Local sandbox execution runs with the backend process's privileges. The default
-configuration enables document retrieval tools; enable additional execution
-tools only for trusted workflows. Domain profiles and Skills are administrator
-configuration, and should be reviewed before installation.
+configuration includes document retrieval, file reading, shell execution, web fetch,
+and image search. Use execution tools only in trusted workflows. Domain profiles
+and Skills are administrator configuration, and should be reviewed before installation.

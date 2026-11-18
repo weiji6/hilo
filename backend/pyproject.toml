@@ -1,7 +1,7 @@
 [project]
 name = "hilo-framework"
 version = "0.1.0"
-description = "Extensible Agentic RAG and knowledge research framework, built on DeerFlow"
+description = "Extensible LLM framework for Agentic Search, built on DeerFlow"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

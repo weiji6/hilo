@@ -2,8 +2,8 @@
 
 **连接文档，循证探索。**
 
-Hilo 是一个可扩展的 **Agentic RAG 与知识研究框架**。它让 Agent 接入专业文档，
-定位正文证据，以可追溯的引用回答问题，并在用户明确要求深入研究时协调研究子任务。
+Hilo 是一个面向 **Agentic Search 的可扩展大模型框架**。它通过 Agentic RAG、证据检索、
+引用追溯与多智能体编排，让 Agent 选择来源、定位正文、回答问题，并在用户明确要求深入研究时协调研究子任务。
 
 **简体中文** · [English](README.en.md) · [架构说明](docs/architecture.md) ·
 [领域配置](docs/domain-profiles.md) · [参与贡献](CONTRIBUTING.md)
@@ -21,7 +21,7 @@ Hilo 是一个可扩展的 **Agentic RAG 与知识研究框架**。它让 Agent 
 - **证据约束**：区分目录导航页与正文证据，保持来源范围，登记引用，并在证据不足时说明缺口。
 
 通用框架与具体领域分离。技术文档示例附带虚构的演示文档；财经史示例展示如何通过配置
-表达原应用的领域规则，不附带原书、用户资料或私有部署配置。
+表达领域规则，不附带原书、用户资料或私有部署配置。
 
 ## 快速开始
 
@@ -63,9 +63,8 @@ make index-knowledge
 
 使用 `make docker-stop` 停止服务。命名卷会保留运行数据、检查点、认证数据库与向量索引。
 这是一套本地开发配置；对外部署前请阅读 [SECURITY.md](SECURITY.md)。
-独立整栈验收已验证全新 Docker 构建、注册登录、文档上传与索引、Skills 安装和 SSE 引用问答。
-整栈验收中的聊天与嵌入使用确定性的 HTTP 测试服务；DeepSeek OCR 另以合成 PDF
-完成了真实接口和本地上传链路验证，其他外部服务仍需按部署环境单独验证，见[功能核对记录](docs/functionality-audit.md)。
+整栈测试覆盖全新 Docker 构建、注册登录、文档上传与索引、Skills 安装和 SSE 引用问答，
+聊天与嵌入使用确定性的 HTTP 测试服务。复现方式与验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 接入自己的领域
 
@@ -125,7 +124,8 @@ uv run python scripts/local_ocr.py --input /path/to/pdfs --output /path/to/outpu
 
 入库脚本把 `.structured.json` 写入 SQLite 段落库，供正文定位和全文检索使用；
 `make index-knowledge` 则建立 Qdrant 向量索引。OCR 产物还需要放入知识库并执行入库/索引，
-不能仅运行 OCR 就视为完成知识接入。维护工具与验证边界见[功能核对记录](docs/functionality-audit.md)。
+不能仅运行 OCR 就视为完成知识接入。维护工具见[架构说明](docs/architecture.md)，
+验证边界见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 UTF-8 Markdown/TXT 在本地解析，无需 OCR 服务。`make config` 复制的示例文档及直接放入
 `knowledge/docs` 的 Markdown/TXT 可通过 `make index-knowledge` 建立索引，也可直接定位正文并引用。
@@ -165,18 +165,18 @@ cd frontend && pnpm typecheck
 `make test` 运行全部后端测试，覆盖领域隔离、初始化与导出约束、检索预算、正文证据、
 目录路由、引用、可选任务记忆及发布完整性。运行链路测试使用真实网关、解析器与嵌入式 Qdrant，
 并用本地模型替身验证同步/异步 Agent 执行与引用状态传递。它不等于真实服务端到端验收。
-当前后端测试为 473 项；整栈验收还覆盖认证代理的线程/用户资料隔离、资料生命周期和优雅重启后的数据保留。
-详见 [CONTRIBUTING.md](CONTRIBUTING.md) 与[功能核对记录](docs/functionality-audit.md)。
+整栈测试还覆盖认证代理的线程/用户资料隔离、资料生命周期和优雅重启后的数据保留。
+详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 运行 `python3 scripts/export_open_source.py --check` 检查发布输入。
 `make export` 在 `release/hilo` 创建新的纯源码快照，排除 Git 历史、本地设置、运行数据、
 私有基础设施及原演示录屏；目标目录已存在时拒绝覆盖。
-这套导出流程用于源码分发，不用于保留或迁移原仓库的 Git 提交历史。
 
 ## 当前范围
 
-Hilo 已提供可配置领域、文档研究与完整工作区源码。
-独立稳定 SDK、按请求切换领域、正式检索质量基准与生产 API 鉴权仍在规划中。
+Hilo 当前以完整前后端源码提供 Agentic Search 的文档检索、问答和研究流程。
+领域配置在进程级加载；独立稳定 SDK、按请求切换领域和正式检索质量基准尚未提供。
+工作区已实现登录和认证代理，后端直连接口仍需要部署方补充生产级鉴权。
 引用检查验证来源登记与页面类型，不保证每条结论在语义上都被引文支持；
 模型回答质量需要结合具体应用评估。
 

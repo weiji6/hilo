@@ -1,6 +1,7 @@
 # Hilo development
 
-Hilo is an Agentic RAG and knowledge research framework derived from DeerFlow.
+Hilo is an LLM framework for Agentic Search, derived from DeerFlow. Its knowledge
+layer provides Agentic RAG, evidence retrieval, citations, and research orchestration.
 Keep upstream attribution and license notices. Domain-specific behavior belongs
 in domain profiles and examples, not in reusable retrieval code.
 

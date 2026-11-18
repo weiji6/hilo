@@ -53,7 +53,7 @@ The frontend is a stateful chat application. Users create **threads** (conversat
   - `models/` — TypeScript types and data models
 - **`hooks/`** — Shared React hooks
 - **`lib/`** — Utilities (`cn()` from clsx + tailwind-merge)
-- **`server/`** — Server-side code (better-auth, not yet active)
+- **`server/`** — Better Auth sessions with MySQL-compatible storage; authenticated knowledge and LangGraph proxies live in `app/api/`
 - **`styles/`** — Global CSS with Tailwind v4 `@import` syntax and CSS variables for theming
 
 ### Data Flow
